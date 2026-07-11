@@ -66,7 +66,7 @@ def call_genai_with_fallback(contents, system_instruction, temperature=0.7):
     except Exception as e:
         return f"Initialization Error: {str(e)}"
 
-    # Fixed: Updated to actual active Google GenAI model names
+    # Left your exact original models here
     models = [
         "gemini-3.1-flash-lite",
         "gemini-3.5-flash"
@@ -379,9 +379,16 @@ def guide():
             # Now parse the cleaned string
             parsed_json = json.loads(clean_json_str.strip())
             
-            # Combine the parsed layout fields with your progress metric naturally
-            parsed_json["progress"] = updated_pct
-            return jsonify(parsed_json)
+            # Normalize keys to lowercase for total structural safety
+            normalized_json = {k.lower(): v for k, v in parsed_json.items()}
+            
+            return jsonify({
+                "chatResponse": parsed_json.get("chatResponse") or parsed_json.get("ChatResponse"),
+                "isTestTrigger": normalized_json.get("istesttrigger", True),
+                "testTitle": parsed_json.get("testTitle") or parsed_json.get("TestTitle", "Evaluation Matrix"),
+                "questions": parsed_json.get("questions") or parsed_json.get("Questions", []),
+                "progress": updated_pct
+            })
             
         except (ValueError, TypeError):
             # Fallback: If it's a regular conversation text block, format it normally
