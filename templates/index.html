@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, interactive-widget=resizes-content">
+  <title>Helper Buddy - Advanced Adaptive Terminal</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              background: '#0F0F12',
+              card: '#16171E',
+              accent: '#4F46E5',
+              testBg: '#0B0B0F',
+              testCard: '#12131A',
+              emerald: '#10B981'
+            }
+          },
+          fontFamily: {
+            sans: ['"Inter"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body { 
+      background-color: #0F0F12; 
+      font-family: 'Inter', sans-serif; 
+      overflow: hidden; 
+      color: #F1F5F9;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .app-container { height: 100dvh; }
+    
+    h1, h2, h3, h4 { letter-spacing: -0.02em !important; }
+
+    .premium-glow-bg {
+      position: relative;
+      background-color: #0F0F12;
+    }
+    .premium-glow-bg::before {
+      content: '';
+      position: absolute;
+      top: 20%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100vw;
+      height: 100vw;
+      background: radial-gradient(circle, rgba(79, 70, 229, 0.04) 0%, rgba(15, 15, 18, 0) 70%);
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    .glass-panel {
+      background: rgba(22, 23, 30, 0.85);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .chat-window { 
+      flex: 1; 
+      overflow-y: auto; 
+      scroll-behavior: smooth;
+      position: relative;
+      z-index: 2;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .ai-bubble { 
+      background: #16171E;
+      border: 1px solid rgba(255, 255, 255, 0.04); 
+      border-radius: 12px;
+      color: #FFFFFF !important;
+    }
+
+    .user-bubble { 
+      background: linear-gradient(135deg, #4F46E5 0%, #3730A3 100%); 
+      color: #FFFFFF; 
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    button, input, textarea {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    
+    .prose strong { color: #FFFFFF !important; font-weight: 700; }
+    .prose p { margin-bottom: 8px; font-weight: 400; color: #FFFFFF; line-height: 1.5; }
+    .prose p:last-child { margin-bottom: 0; }
+    
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    @keyframes logoReveal { 0% { transform: scale(0.97); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    @keyframes textSlideRight { 0% { width: 0; opacity: 0; } 100% { width: 160px; opacity: 1; } }
+    @keyframes fadeOutSplash { 0% { opacity: 1; visibility: visible; } 100% { opacity: 0; visibility: hidden; } }
+    .splash-active .splash-logo { animation: logoReveal 0.5s ease-out forwards; }
+    .splash-active .splash-text { animation: textSlideRight 0.5s ease-out 0.2s forwards; }
+    .splash-fade-out { animation: fadeOutSplash 0.2s ease-out forwards; }
+
+    input::placeholder, textarea::placeholder { color: #4B5563; }
+
+    /* Split Screen Resize Handling */
+    .split-resizer {
+      width: 6px;
+      cursor: col-resize;
+      background: rgba(255,255,255,0.03);
+      position: relative;
+      z-index: 60;
+      transition: background 0.2s;
+    }
+    .split-resizer:hover, .split-resizer.dragging {
+      background: #4F46E5;
+    }
+    .split-resizer::after {
+      content: '⋮';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: rgba(255,255,255,0.4);
+      font-size: 14px;
+    }
+
+    @keyframes itemEntry {
+      from { transform: translateY(12px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .animate-item-entry {
+      animation: itemEntry 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
+</head>
+<body class="splash-active text-slate-200 selection:bg-indigo-500/30">
+
+  <div id="splash-screen" class="fixed inset-0 z-[100] bg-[#0F0F12] flex items-center justify-center">
+    <div class="flex items-center gap-3">
+      <div class="splash-logo opacity-0 flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br from-[#4F46E5] to-[#3730A3] ring-1 ring-white/10">
+        <i class="fas fa-compass text-lg text-white"></i>
+      </div>
+      <div class="overflow-hidden whitespace-nowrap flex items-center h-11">
+        <h2 class="splash-text opacity-0 text-lg font-bold tracking-tight text-white">Helper Buddy</h2>
+      </div>
+    </div>
+  </div>
+
+  <div id="info-sheet" class="fixed inset-0 z-[150] hidden bg-[#0F0F12]/80 backdrop-blur-sm flex items-end justify-center p-0 transition-opacity duration-300" onclick="closeInfoSheet()">
+    <div class="w-full max-w-md bg-[#16171E] border-t border-white/10 rounded-t-2xl p-6 space-y-4 transform translate-y-full transition-transform duration-300" onclick="event.stopPropagation()">
+      <div class="w-12 h-1 bg-gray-700 rounded-full mx-auto mb-2"></div>
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 shrink-0 mt-0.5">
+          <i class="fas fa-circle-info"></i>
+        </div>
+        <div>
+          <h3 id="sheet-title" class="text-sm font-bold text-white uppercase tracking-wider">Metric Insights</h3>
+          <p id="sheet-body" class="text-xs text-gray-400 mt-1 leading-relaxed"></p>
+        </div>
+      </div>
+      <button onclick="closeInfoSheet()" class="w-full bg-[#1C1D26] hover:bg-white/10 hover:text-white border border-white/5 text-sm font-semibold py-3 rounded-xl text-gray-300 transition active:scale-[0.98]">
+        Dismiss
+      </button>
+    </div>
+  </div>
+
+  <div class="flex app-container overflow-hidden w-full relative premium-glow-bg">
+    
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/60 z-30 hidden md:hidden" onclick="toggleMobileMenu()"></div>
+    
+    <div id="sidebar" class="fixed inset-y-0 left-0 z-40 w-72 bg-[#16171E] border-r border-white/5 transform -translate-x-full transition-transform duration-300 ease-in-out md:relative md:translate-x-0 flex flex-col h-full shrink-0">
+      <div class="p-4 border-b border-white/5 flex flex-col gap-2">
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#4F46E5] to-[#3730A3] flex items-center justify-center text-white text-xs ring-1 ring-white/10">
+              <i class="fas fa-compass"></i>
+            </div>
+            <div>
+              <h1 class="text-xs font-bold text-white tracking-tight">Helper Buddy</h1>
+              <p class="text-[8px] text-gray-500 font-bold tracking-widest uppercase">Advisory Terminal</p>
+            </div>
+          </div>
+          <button onclick="toggleMobileMenu()" class="md:hidden text-gray-400 hover:text-white p-2 text-sm rounded-lg hover:bg-white/5 transition"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <div class="mt-1.5 bg-[#4F46E5]/10 hover:bg-[#4F46E5]/15 cursor-pointer border border-[#4F46E5]/20 rounded-lg px-2.5 py-1.5 flex items-center justify-between transition" onclick="openInfoSheet('window')">
+          <div class="flex items-center gap-2">
+            <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
+            <span class="text-[9px] font-bold text-gray-300 uppercase tracking-wide">Instance Allocation Active</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <div id="scarcity-countdown" class="text-[9px] font-mono text-[#818CF8] bg-[#0F0F12] px-1.5 py-0.5 rounded border border-white/5">14:59</div>
+            <i class="fas fa-circle-info text-[9px] text-gray-500"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-3 border-b border-white/5">
+        <button onclick="confirmReset()" class="w-full bg-[#0F0F12] hover:bg-[#1C1D26] hover:border-white/10 hover:text-white border border-white/5 py-2 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-2 text-gray-400 shadow-sm active:scale-[0.98]">
+          <i class="fas fa-sync text-gray-500 text-[9px]"></i> Reset Performance Track
+        </button>
+      </div>
+
+      <div class="p-4 flex-1 overflow-y-auto space-y-3 no-scrollbar">
+        <h3 class="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Active Diagnostic Telemetry</h3>
+        
+        <div class="bg-[#0F0F12] hover:bg-[#16171E] border border-white/5 hover:border-white/10 cursor-pointer rounded-xl p-3.5 space-y-0.5 relative overflow-hidden transition" onclick="openInfoSheet('velocity')">
+          <div class="flex justify-between items-center">
+            <p class="text-[9px] font-medium text-gray-400 uppercase tracking-wider">Performance Velocity Index</p>
+            <i class="fas fa-circle-info text-[9px] text-gray-600"></i>
+          </div>
+          <p id="metric-velocity" class="text-lg font-bold text-white tracking-tight">Top --%</p>
+          <p class="text-[8px] text-gray-500 mt-0.5">Percentile bracket against milestone parameters</p>
+        </div>
+
+        <div class="bg-[#0F0F12] hover:bg-[#16171E] border border-white/5 hover:border-white/10 cursor-pointer rounded-xl p-3.5 space-y-2 transition" onclick="openInfoSheet('autompany')">
+          <div class="flex justify-between items-center">
+            <p class="text-[9px] font-medium text-gray-400 uppercase tracking-wider">Execution Autonomy Factor</p>
+            <i class="fas fa-circle-info text-[9px] text-gray-600"></i>
+          </div>
+          <input type="range" min="1" max="100" value="30" class="w-full accent-[#4F46E5] h-1 bg-[#16171E] rounded-lg pointer-events-none">
+          <div class="flex justify-between text-[8px] text-gray-500 font-bold uppercase tracking-wider">
+            <span>Rigid Framework</span>
+            <span class="text-[#818CF8]">Adaptive Mastery</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-3 border-t border-white/5 bg-[#0F0F12]/30 mt-auto w-full">
+        <div class="bg-[#0F0F12] border border-white/5 rounded-xl p-3 space-y-2 shadow-md">
+          <p class="text-[9px] font-medium text-gray-400 uppercase">Your Mentoring Progress</p>
+          <p id="metric-progress-pct" class="text-lg font-bold text-white">10%</p>
+          <p class="text-[8px] text-gray-500">Sessions completed</p>
+        </div>
+        <div class="h-1 bg-[#16171E] rounded-full overflow-hidden p-[1px] border border-white/5 mt-2">
+          <div id="progress-bar" class="h-full bg-gradient-to-r from-[#4F46E5] to-[#818CF8] rounded-full transition-all duration-500 w-[10%]"></div>
+        </div>
+        <div class="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-gray-400 pt-1.5">
+          <i class="fas fa-unlock-keyhole text-indigo-400" id="stage-icon"></i>
+          <span id="progress-text" class="truncate">1. Trajectory Discovery</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="split-container" class="flex-1 flex w-full h-full relative transition-all duration-300">
+      
+      <div id="chat-section" class="h-full flex flex-col min-w-[20%] w-[100%] transition-all duration-75">
+        <div id="top-nav" class="h-12 glass-panel px-4 flex items-center justify-between z-30 w-full shrink-0">
+          <div class="flex items-center gap-2">
+            <button onclick="toggleMobileMenu()" class="md:hidden p-1.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition text-sm"><i class="fas fa-bars-staggered"></i></button>
+            <span id="header-step" class="text-[9px] font-bold text-gray-400 tracking-widest uppercase">Strategy Calibration Channel</span>
+          </div>
+          <div id="sync-badge" class="flex items-center gap-1.5 bg-[#4F46E5]/10 px-2.5 py-0.5 rounded-full border border-[#4F46E5]/20">
+            <span class="w-1 h-1 bg-[#4F46E5] rounded-full animate-pulse"></span>
+            <span id="sync-text" class="text-[8px] font-bold text-[#818CF8] uppercase tracking-wider">Strategy Sync</span>
+          </div>
+        </div>
+
+        <div id="chat-window" class="chat-window p-4 md:p-6 space-y-4 w-full"></div>
+
+        <div id="chips-container" class="flex gap-2 p-4 overflow-x-auto no-scrollbar shrink-0 max-w-3xl mx-auto w-full">
+          <button onclick="useSuggestion('Generate a mock test for Physics Magnetism')" class="px-3 py-1.5 bg-[#16171E] border border-white/5 rounded-lg text-xs text-gray-400 hover:text-white hover:border-white/10 hover:bg-[#1C1D26] active:scale-95 whitespace-nowrap transition">🧲 Physics Magnetism Test</button>
+          <button onclick="useSuggestion('Give me sample questions for Organic Chemistry')" class="px-3 py-1.5 bg-[#16171E] border border-white/5 rounded-lg text-xs text-gray-400 hover:text-white hover:border-white/10 hover:bg-[#1C1D26] active:scale-95 whitespace-nowrap transition">🧪 Organic Chemistry Test</button>
+        </div>
+
+        <div class="p-3 bg-transparent shrink-0 w-full z-20">
+          <div class="max-w-3xl mx-auto">
+            <div id="file-preview-zone" class="hidden bg-[#16171E] border border-b-0 border-white/5 rounded-t-xl p-2.5 flex items-center justify-between">
+              <div class="flex items-center gap-2 overflow-hidden">
+                <div class="w-8 h-8 rounded bg-white/5 flex items-center justify-center text-indigo-400 shrink-0">
+                  <i class="fas fa-file-image" id="preview-icon"></i>
+                </div>
+                <span id="preview-filename" class="text-xs text-gray-300 truncate max-w-[200px]">filename.jpg</span>
+              </div>
+              <button onclick="clearSelectedFile()" class="w-6 h-6 rounded-full bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition">
+                <i class="fas fa-times text-xs"></i>
+              </button>
+            </div>
+
+            <div id="input-container" class="bg-[#16171E] rounded-xl p-1.5 border border-white/5 focus-within:border-[#4F46E5] transition-all flex items-end relative">
+              <input type="file" id="file-uploader" accept=".png,.jpg,.jpeg,.webp,.pdf" class="hidden" onchange="handleFileSelection()">
+              <button onclick="triggerFilePicker()" class="text-gray-400 hover:text-indigo-400 hover:bg-white/5 w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 shadow-md shrink-0 mb-0.5 transition">
+                <i class="fas fa-paperclip text-sm"></i>
+              </button>
+              <textarea id="user-input" rows="1" placeholder="Ask for a test, sample paper or clear your doubts..." class="flex-1 bg-transparent px-2 py-1.5 outline-none resize-none text-sm max-h-24 text-gray-100 placeholder-gray-500 leading-normal"></textarea>
+              <button id="send-btn" onclick="send()" class="bg-[#4F46E5] hover:bg-[#4338CA] text-white w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 hover:scale-105 shadow-md shrink-0 ml-1.5 transition">
+                <i class="fas fa-arrow-up text-xs"></i>
+              </button>
+            </div>
+            <p class="text-[7px] text-gray-600 text-center mt-2 uppercase tracking-widest font-bold">AI can also make mistakes , Please double-check (Nino is slightly weak in Maths so please cross-check)</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="split-slider" class="split-resizer hidden"></div>
+
+      <div id="test-section" class="h-full bg-brand-testBg border-l border-white/5 flex flex-col min-w-[0%] w-[0%] hidden relative overflow-hidden transition-all duration-75">
+        
+        <div id="test-configurator-screen" class="absolute inset-0 bg-brand-testBg z-50 flex flex-col items-center justify-center p-6 space-y-6">
+          <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-lg">
+            <i class="fas fa-sliders animate-pulse"></i>
+          </div>
+          <div class="text-center space-y-1">
+            <h3 class="text-sm font-bold text-white tracking-tight" id="config-topic-title">Calibrating Sandbox Environment</h3>
+            <p class="text-xs text-gray-500 font-light max-w-xs mx-auto">Tune your evaluation requirements prior to initializing main architecture registers.</p>
+          </div>
+          
+          <div class="w-full max-w-xs bg-brand-testCard border border-white/5 rounded-2xl p-4 space-y-4">
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-mono uppercase font-bold tracking-wider text-gray-400 block">Problem Sets Depth</label>
+              <select id="config-total-questions" class="w-full bg-[#0F0F12] border border-white/5 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-brand-accent cursor-pointer">
+                <option value="2">2 High-Yield Problems</option>
+                <option value="5">5 Chapter Framework Questions</option>
+                <option value="10">10 Full Mock Target Vectors</option>
+              </select>
+              
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-mono uppercase font-bold tracking-wider text-gray-400 block">Execution Window Limit</label>
+              <select id="config-timer-minutes" class="w-full bg-[#0F0F12] border border-white/5 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-brand-accent">
+                <option value="5">5 Minutes Sprint</option>
+                <option value="15">15 Minutes Balanced</option>
+                <option value="30">30 Minutes Deep Grind</option>
+              </select>
+            </div>
+            <button onclick="commitTestInitialization()" class="w-full bg-brand-accent hover:bg-indigo-600 text-white rounded-xl text-xs font-semibold py-2.5 transition active:scale-95 shadow-md">
+              Initialize Matrix Run
+            </button>
+          </div>
+        </div>
+
+        <div class="h-12 border-b border-white/5 px-4 flex items-center justify-between shrink-0 bg-brand-testCard">
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-bold text-white tracking-tight">Interactive Sandbox Evaluation</span>
+            <div class="bg-red-500/10 border border-red-500/20 rounded px-2 py-0.5 flex items-center gap-1.5 font-mono text-[11px] text-red-400 font-bold shadow-sm" id="test-timer-wrapper">
+              <i class="fas fa-clock text-[10px] animate-pulse"></i>
+              <span id="test-countdown-clock">00:00</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="setSplitView(50)" class="text-[10px] font-mono uppercase px-2 py-1 bg-white/5 border border-white/10 rounded text-gray-300 hover:text-white transition hidden md:inline-block"><i class="fas fa-columns mr-1"></i> Split 50:50</button>
+            <button onclick="closeTestingInterface()" class="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-white/5 text-xs transition">
+              <i class="fas fa-circle-xmark text-sm"></i> Close
+            </button>
+          </div>
+        </div>
+
+        <div id="test-viewport" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 no-scrollbar"></div>
+
+        <div class="p-4 border-t border-white/5 bg-brand-testCard flex gap-3 items-center justify-between shrink-0">
+          <div>
+            <span class="text-[9px] text-gray-500 block uppercase tracking-wider font-semibold">Testing Progress</span>
+            <span id="test-counter" class="text-xs text-slate-300 font-mono">0 / 0 Solved</span>
+          </div>
+          <button onclick="evaluateExamSubmission()" id="submit-exam-btn" class="px-5 py-2.5 bg-brand-emerald hover:bg-emerald-600 text-white rounded-xl text-xs font-semibold shadow-lg active:scale-95 transition flex items-center gap-2">
+            <i class="fas fa-square-check"></i> Complete Verification Loop
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let step = 0;
+    let userData = {};
+    let selectedFileObject = null;
+    let examinationActive = false;
+    let verificationQuestions = [];
+    let currentTopicContext = "General Practice Framework";
+    let examCountdownInterval = null;
+    let timeRemainingSeconds = 0;
+    
+    const chat = document.getElementById("chat-window");
+    const input = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+    const progressBar = document.getElementById("progress-bar");
+    const progressText = document.getElementById("progress-text");
+    const progressPctText = document.getElementById("metric-progress-pct");
+    const sidebar = document.getElementById("sidebar");
+    const sidebarBackdrop = document.getElementById("sidebar-backdrop");
+    const fileUploader = document.getElementById("file-uploader");
+    const filePreviewZone = document.getElementById("file-preview-zone");
+    const previewFilename = document.getElementById("preview-filename");
+    
+    // Core Layout Split pointers
+    const splitContainer = document.getElementById("split-container");
+    const chatSection = document.getElementById("chat-section");
+    const splitSlider = document.getElementById("split-slider");
+    const testSection = document.getElementById("test-section");
+    const testConfiguratorScreen = document.getElementById("test-configurator-screen");
+    const testViewport = document.getElementById("test-viewport");
+    const testCounter = document.getElementById("test-counter");
+    const testCountdownClock = document.getElementById("test-countdown-clock");
+
+    const textPayloads = {
+      window: { title: "Advisory Window Allocation", body: "High-priority systemic resources are reserved for your account session." },
+      velocity: { title: "Performance Velocity Index", body: "An advanced structural metric profiling your mastery layout." },
+      autompany: { title: "Execution Autonomy", body: "Measures your shift into adaptive strategic execution loops." }
+    };
+
+    function renderMathFormulas(text) {
+      if (typeof katex === 'undefined') return text;
+      let formatted = text.replace(/\$\$([\s\S]+?)\$\$/g, (match, expression) => {
+        try { return '<div class="my-3 overflow-x-auto max-w-full py-1">' + katex.renderToString(expression.trim() || expression, { displayMode: true, throwOnError: false }) + '</div>'; }
+        catch (err) { return match; }
+      });
+      formatted = formatted.replace(/\$([^\$\n]+?)\$/g, (match, expression) => {
+        try { return katex.renderToString(expression, { displayMode: false, throwOnError: false }); }
+        catch (err) { return match; }
+      });
+      return formatted;
+    }
+
+    function runScarcityTimer() {
+      let duration = 14 * 60 + 59;
+      const display = document.getElementById('scarcity-countdown');
+      setInterval(() => {
+        let minutes = parseInt(duration / 60, 10);
+        let seconds = parseInt(duration % 60, 10);
+        minutes = minutes < 10 ? "0" + minutes : minutes;
+        seconds = seconds < 10 ? "0" + seconds : seconds;
+        if(display) display.textContent = minutes + ":" + seconds;
+        if (--duration < 0) duration = 14 * 60 + 59;
+      }, 1000);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const splash = document.getElementById('splash-screen');
+        splash.classList.add('splash-fade-out');
+        document.body.classList.remove('splash-active');
+        setTimeout(() => { 
+          splash.remove(); 
+          initSystemGreeting();
+          runScarcityTimer();
+          initializeDraggableResizer();
+        }, 200);
+      }, 1200);
+    });
+
+    marked.setOptions({ breaks: true });
+
+    function toggleMobileMenu() {
+      const isOpen = !sidebar.classList.contains("-translate-x-full");
+      if(isOpen) {
+        sidebar.classList.add("-translate-x-full");
+        sidebarBackdrop.classList.add("hidden");
+      } else {
+        sidebar.classList.remove("-translate-x-full");
+        sidebarBackdrop.classList.remove("hidden");
+      }
+    }
+
+    function openInfoSheet(key) {
+      const sheet = document.getElementById('info-sheet');
+      document.getElementById('sheet-title').textContent = textPayloads[key].title;
+      document.getElementById('sheet-body').textContent = textPayloads[key].body;
+      sheet.classList.remove('hidden');
+      setTimeout(() => { sheet.firstElementChild.classList.remove('translate-y-full'); }, 10);
+    }
+
+    function closeInfoSheet() {
+      const sheet = document.getElementById('info-sheet');
+      sheet.firstElementChild.classList.add('translate-y-full');
+      setTimeout(() => { sheet.classList.add('hidden'); }, 300);
+    }
+
+    function useSuggestion(t) { input.value = t; send(); }
+
+    function confirmReset() {
+      userData = {}; step = 0; chat.innerHTML = "";
+      document.getElementById("metric-velocity").textContent = "Top --%";
+      updateUIProgress("10%", "1. Trajectory Discovery");
+      clearSelectedFile();
+      closeTestingInterface();
+      if(!sidebar.classList.contains("-translate-x-full")) toggleMobileMenu();
+      initSystemGreeting();
+    }
+
+    function updateUIProgress(pct, customLabel) {
+      progressBar.style.width = pct;
+      if (progressPctText) progressPctText.textContent = pct;
+      const icon = document.getElementById("stage-icon");
+      progressText.textContent = customLabel;
+    }
+
+    function triggerFilePicker() { fileUploader.click(); }
+    function handleFileSelection() {
+      if (fileUploader.files && fileUploader.files[0]) {
+        selectedFileObject = fileUploader.files[0];
+        previewFilename.textContent = selectedFileObject.name;
+        filePreviewZone.classList.remove("hidden");
+        document.getElementById("input-container").classList.add("rounded-t-none");
+      }
+    }
+    function clearSelectedFile() {
+      selectedFileObject = null;
+      fileUploader.value = "";
+      filePreviewZone.classList.add("hidden");
+      document.getElementById("input-container").classList.remove("rounded-t-none");
+    }
+
+    function addMessage(text, sender, isSandboxMsg = false, uploadedFileName = null) {
+      const wrapper = document.createElement("div");
+      wrapper.className = sender === "user" ? "flex justify-end opacity-0 scale-[0.99] animate-[logoReveal_0.15s_ease-out_forwards]" : "flex justify-start opacity-0 scale-[0.99] animate-[logoReveal_0.15s_ease-out_forwards]";
+      let formattedText = renderMathFormulas(text);
+      let finalContent = sender === 'user' ? text : marked.parse(formattedText);
+      let bubbleClass = sender === 'user' ? 'user-bubble' : 'ai-bubble';
+
+      wrapper.innerHTML = `<div class="${bubbleClass} px-4 py-3 max-w-[90%] md:max-w-[75%] prose prose-invert text-sm leading-relaxed">${finalContent}</div>`;
+      chat.appendChild(wrapper);
+      setTimeout(() => { chat.scrollTop = chat.scrollHeight; }, 20);
+    }
+
+    function initSystemGreeting() {
+      updateUIProgress("10%", "1. Trajectory Discovery");
+      addMessage("Welcome in the room of your Helper Buddy , I am here to help you related to your life in IIT or preparing for IIT and don't worry I am here to listen you tell me how can I help you ?", "ai");
+      step = 1;
+    }
+
+    /* SPLIT RESIZER CORE INTERACTION ENGINE */
+    function initializeDraggableResizer() {
+      let isDragging = false;
+      
+      splitSlider.addEventListener('mousedown', function(e) {
+        isDragging = true;
+        splitSlider.classList.add('dragging');
+        document.body.style.cursor = 'col-resize';
+      });
+
+      document.addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        let containerWidth = splitContainer.offsetWidth;
+        let leftWidthPercentage = (e.clientX - splitContainer.getBoundingClientRect().left) / containerWidth * 100;
+        
+        // Boundaries safety margins
+        if (leftWidthPercentage < 25) leftWidthPercentage = 25;
+        if (leftWidthPercentage > 75) leftWidthPercentage = 75;
+        
+        setSplitView(leftWidthPercentage);
+      });
+
+      document.addEventListener('mouseup', function() {
+        if (isDragging) {
+          isDragging = false;
+          splitSlider.classList.remove('dragging');
+          document.body.style.cursor = 'default';
+        }
+      });
+    }
+
+    function setSplitView(chatWidthPercent) {
+      let testWidthPercent = 100 - chatWidthPercent;
+      chatSection.style.width = `${chatWidthPercent}%`;
+      testSection.style.width = `${testWidthPercent}%`;
+    }
+
+    /* ADVANCED LIVE TESTING LOGIC MAP */
+    function openTestingInterface(topic) {
+      examinationActive = true;
+      currentTopicContext = topic || "IIT-JEE Target Matrix";
+      document.getElementById("config-topic-title").textContent = `Calibrating: ${currentTopicContext}`;
+      
+      // Reveal the container view using clean layout flags
+      testSection.classList.remove('hidden');
+      splitSlider.classList.remove('hidden');
+      
+      // Animate entry split frame smoothly to 50:50 view
+      setTimeout(() => {
+        chatSection.classList.remove('w-[100%]');
+        setSplitView(55);
+        testSection.style.minWidth = "25%";
+      }, 5);
+      
+      testConfiguratorScreen.classList.remove('hidden');
+    }
+
+    function commitTestInitialization() {
+      const qCount = parseInt(document.getElementById("config-total-questions").value);
+      const mLimit = parseInt(document.getElementById("config-timer-minutes").value);
+      
+      testConfiguratorScreen.classList.add('hidden');
+      
+      // FIX: Only generate hardcoded questions if Nino hasn't already sent dynamic ones!
+      if (!verificationQuestions || verificationQuestions.length === 0) {
+        generateTopicSpecificQuestions(currentTopicContext, qCount);
+      }
+      
+      // Trigger local runtime clock countdown
+      timeRemainingSeconds = mLimit * 60;
+      startTestingClock();
+      
+      renderVerificationQuestions();
+    }
+
+    function generateTopicSpecificQuestions(topic, count) {
+      verificationQuestions = [];
+      const isMagnetism = /magnet/i.test(topic);
+      
+      for(let i = 1; i <= count; i++) {
+        if(isMagnetism) {
+          verificationQuestions.push({
+            id: i,
+            question: `[Magnetism Framework Block ${i}] A charged particle vector $q$ moves with absolute velocity $v$ into a magnetic flux setup parameterized by intensity $B = B_0\\hat{j}$. If paths loop uniformly, evaluate torque field matrices at phase vector $t_{${i}}$.`,
+            options: ["Zero Vector Work", "q(v × B) Max Magnitude", "Helical Divergence Stage", "Dependent on Flux Gradient"],
+            correct: 0,
+            selectedAnswer: null
+          });
+        } else {
+          verificationQuestions.push({
+            id: i,
+            question: `[Advanced Core Question Vector ${i}] Consider the standard reaction metrics where energy thresholds follow activation path variables. Evaluate the total equilibrium change if volume alters by factor parameter $k$.`,
+            options: ["Unchanged State Profile", "Linear Proportional Expansion", "Logarithmic Decoupling", "Inversely Decoupled Output"],
+            correct: 1,
+            selectedAnswer: null
+          });
+        }
+      }
+    }
+
+    function renderVerificationQuestions() {
+      testViewport.innerHTML = "";
+      let solved = 0;
+
+      verificationQuestions.forEach((q, index) => {
+        if(q.selectedAnswer !== null) solved++;
+        
+        const card = document.createElement("div");
+        card.className = "bg-brand-testCard border border-white/5 rounded-xl p-5 space-y-4 animate-item-entry opacity-0";
+        card.style.animationDelay = `${index * 80}ms`;
+        
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex items-start gap-2.5">
+              <span class="text-[10px] font-mono font-bold bg-[#1A1B24] border border-white/10 px-2 py-0.5 rounded text-indigo-400 shrink-0">Q ${q.id || (index + 1)}</span>
+              <div class="text-sm text-slate-300 font-light leading-relaxed prose prose-invert max-w-full">
+                ${renderMathFormulas(q.question)}
+              </div>
+            </div>
+            <button onclick="requestRealtimeDoubtSupport(${q.id || (index + 1)})" class="text-[10px] text-indigo-400 border border-indigo-500/20 bg-indigo-500/5 px-2.5 py-1 rounded-lg hover:bg-indigo-500/20 hover:text-white shrink-0 transition flex items-center gap-1">
+              <i class="fas fa-comment-dots"></i> Explain Q${q.id || (index + 1)}
+            </button>
+          </div>
+          /* Locate this exact section inside your renderVerificationQuestions loop */
+          <div class="grid grid-cols-1 gap-2 pt-1">
+            ${q.options.map((opt, optIdx) => {
+              const active = q.selectedAnswer === optIdx;
+              return `
+                <button onclick="recordTestAnswer(${index}, ${optIdx})" class="w-full text-left px-4 py-2.5 rounded-xl border text-xs font-light tracking-wide transition-all duration-200 flex items-center justify-between ${
+                  active 
+                    ? 'bg-brand-accent/20 border-brand-accent text-white font-medium shadow-md' 
+                    : 'bg-[#0F0F12] border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/20'
+                }">
+                  <span>${renderMathFormulas(opt)}</span>
+                  <div class="w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${active ? 'border-brand-accent bg-brand-accent' : 'border-gray-700'}">
+                    ${active ? '<i class="fas fa-check text-[7px] text-white"></i>' : ''}
+                  </div>
+                </button>
+              `;
+            }).join('')}
+          </div>
+        `;
+        testViewport.appendChild(card);
+      });
+      
+      testCounter.textContent = `${solved} / ${verificationQuestions.length} Solved`;
+    }
+
+    function recordTestAnswer(qIndex, optionIndex) {
+      verificationQuestions[qIndex].selectedAnswer = optionIndex;
+      renderVerificationQuestions();
+    }
+
+    function startTestingClock() {
+      clearInterval(examCountdownInterval);
+      examCountdownInterval = setInterval(() => {
+        let min = Math.floor(timeRemainingSeconds / 60);
+        let sec = timeRemainingSeconds % 60;
+        testCountdownClock.textContent = `${min < 10 ? '0'+min : min}:${sec < 10 ? '0'+sec : sec}`;
+        
+        if(timeRemainingSeconds <= 0) {
+          clearInterval(examCountdownInterval);
+          alert("Time domain reached boundary conditions! Submitting current parameters.");
+          evaluateExamSubmission();
+        }
+        timeRemainingSeconds--;
+      }, 1000);
+    }
+
+    /* REALTIME DOUBLE WINDOW CONTEXT SHIFTING (Doubt Solver Integration) */
+    function requestRealtimeDoubtSupport(questionId) {
+      // Pull split-view to 50:50 so student can see both windows comfortably
+      setSplitView(50);
+      
+      // Find the exact question data the AI generated
+      const targetQuestion = verificationQuestions.find(q => q.id === questionId);
+      
+      if (targetQuestion) {
+        // Inject the actual question text inside the prompt so the AI has full real-time awareness
+        input.value = `I am stuck on Question ${questionId} in the test panel:\n\n"${targetQuestion.question}"\n\nCan you explain the conceptual core of this problem and guide me to the right answer?`;
+        input.focus();
+        input.style.height = input.scrollHeight + 'px';
+      }
+    }
+
+    function closeTestingInterface() {
+      clearInterval(examCountdownInterval);
+      examinationActive = false;
+      
+      chatSection.style.width = "100%";
+      testSection.style.width = "0%";
+      setTimeout(() => {
+        testSection.classList.add('hidden');
+        splitSlider.classList.add('hidden');
+      }, 100);
+    }
+
+    function evaluateExamSubmission() {
+      let accurate = 0;
+      verificationQuestions.forEach(q => { if(q.selectedAnswer === q.correct) accurate++; });
+      
+      closeTestingInterface();
+      
+      const payloadReport = `### 📊 Diagnostic Evaluation Completed\n\nI have evaluated your answers from the testing area for **${currentTopicContext}**.\n\n* **Metrics Solved:** ${accurate} / ${verificationQuestions.length} correct loops.\n* **Accuracy Bracket:** ${Math.round((accurate/verificationQuestions.length)*100)}%\n\nLet me know if you want to walk through the complete step-by-step mathematical derivations for these questions!`;
+      addMessage(payloadReport, "ai");
+    }
+
+    async function send() {
+      const text = input.value.trim();
+      if (!text && !selectedFileObject) return;
+    
+      const currentFile = selectedFileObject;
+      const fileName = currentFile ? currentFile.name : null;
+    
+      input.value = "";
+      input.style.height = "auto";
+      addMessage(text, "user", false, fileName);
+      clearSelectedFile();
+    
+      const tId = "think-" + Date.now();
+      const div = document.createElement("div");
+      div.id = tId; div.className = "flex justify-start";
+      div.innerHTML = `<div class="ai-bubble px-4 py-3 text-gray-400 text-[10px] uppercase tracking-widest flex items-center gap-2"><i class="fas fa-circle-notch animate-spin text-[#4F46E5]"></i> Nino is thinking...</div>`;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    
+      try {
+        const formData = new FormData();
+        formData.append("interest", userData.goal || text || "General Study Optimization");
+        formData.append("followup", text);
+        if (currentFile) formData.append("file", currentFile);
+    
+        const res = await fetch("/guide", { method: "POST", body: formData });
+        const data = await res.json();
+        document.getElementById(tId).remove();
+    
+        // ==========================================
+        // DYNAMIC INTERACTIVE ROUTING FOR NINO
+        // ==========================================
+        if (data.isTestTrigger && data.questions && data.questions.length > 0) {
+          // 1. Display the customized chat response string 
+          addMessage(data.chatResponse || "I have launched your interactive verification loop!", "ai", false);
+          
+          // 2. Load the dynamic AI chosen problems array cleanly into local memory
+          verificationQuestions = data.questions.map(q => ({
+            ...q,
+            selectedAnswer: null
+          }));
+          
+          // 3. Slide open the test matrix with smooth CSS panels
+          openTestingInterface(data.testTitle || text);
+        } else {
+          // Fallback: If it's normal conversational venting text, fallback to regular field strings
+          addMessage(data.response || data.chatResponse, "ai", false);
+        }
+    
+        // Dynamic telemetry updates 
+        if(data.progress) {
+          updateUIProgress(`${data.progress}%`, data.progress > 40 ? "2. Concept Stabilization" : "1. Trajectory Discovery");
+        }
+    
+      } catch (e) {
+        if(document.getElementById(tId)) document.getElementById(tId).remove();
+        addMessage("### Architecture Timeout\n\nUnable to establish stable telemetry sync to Nino core matrices.", "ai", false);
+      }
+    }
+    input.addEventListener('keydown', e => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+    input.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; });
+  </script>
+</body>
+</html>
