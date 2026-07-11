@@ -785,21 +785,27 @@
         // ==========================================
         // DYNAMIC INTERACTIVE ROUTING FOR NINO
         // ==========================================
-        if (data.isTestTrigger && data.questions && data.questions.length > 0) {
+        
+        // Robust trigger logic handling case differences from the LLM
+        const isTrigger = data.isTestTrigger || data.IsTestTrigger || data.istesttrigger;
+        const testQuestions = data.questions || data.Questions;
+        const titleOfTest = data.testTitle || data.TestTitle || text;
+        
+        if (isTrigger && testQuestions && testQuestions.length > 0) {
           // 1. Display the customized chat response string 
-          addMessage(data.chatResponse || "I have launched your interactive verification loop!", "ai", false);
+          addMessage(data.chatResponse || data.ChatResponse || "I have launched your interactive verification loop!", "ai", false);
           
           // 2. Load the dynamic AI chosen problems array cleanly into local memory
-          verificationQuestions = data.questions.map(q => ({
+          verificationQuestions = testQuestions.map(q => ({
             ...q,
             selectedAnswer: null
           }));
           
           // 3. Slide open the test matrix with smooth CSS panels
-          openTestingInterface(data.testTitle || text);
+          openTestingInterface(titleOfTest);
         } else {
           // Fallback: If it's normal conversational venting text, fallback to regular field strings
-          addMessage(data.response || data.chatResponse, "ai", false);
+          addMessage(data.response || data.chatResponse || data.ChatResponse, "ai", false);
         }
     
         // Dynamic telemetry updates 
