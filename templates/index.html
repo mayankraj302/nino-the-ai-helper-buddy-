@@ -599,7 +599,7 @@
       
       testConfiguratorScreen.classList.add('hidden');
       
-      // FIX: Only generate hardcoded questions if Nino hasn't already sent dynamic ones!
+      // Only generate hardcoded questions if Nino hasn't already sent dynamic ones!
       if (!verificationQuestions || verificationQuestions.length === 0) {
         generateTopicSpecificQuestions(currentTopicContext, qCount);
       }
@@ -636,16 +636,33 @@
       }
     }
 
+    // Helper to generate the options HTML so we can update it without re-rendering the whole card
+    function generateOptionsHTML(q, qIndex) {
+      return q.options.map((opt, optIdx) => {
+        const active = q.selectedAnswer === optIdx;
+        return `
+          <button onclick="recordTestAnswer(${qIndex}, ${optIdx})" class="w-full text-left px-4 py-2.5 rounded-xl border text-xs font-light tracking-wide transition-all duration-200 flex items-center justify-between ${
+            active 
+              ? 'bg-brand-accent/20 border-brand-accent text-white font-medium shadow-md' 
+              : 'bg-[#0F0F12] border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/20'
+          }">
+            <span>${renderMathFormulas(opt)}</span>
+            <div class="w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${active ? 'border-brand-accent bg-brand-accent' : 'border-gray-700'}">
+              ${active ? '<i class="fas fa-check text-[7px] text-white"></i>' : ''}
+            </div>
+          </button>
+        `;
+      }).join('');
+    }
+
     function renderVerificationQuestions() {
       testViewport.innerHTML = "";
-      let solved = 0;
-
+      
       verificationQuestions.forEach((q, index) => {
-        if(q.selectedAnswer !== null) solved++;
-        
         const card = document.createElement("div");
         card.className = "bg-brand-testCard border border-white/5 rounded-xl p-5 space-y-4 animate-item-entry opacity-0";
         card.style.animationDelay = `${index * 80}ms`;
+        card.id = `q-card-${index}`;
         
         card.innerHTML = `
           <div class="flex items-start justify-between gap-4">
@@ -659,34 +676,27 @@
               <i class="fas fa-comment-dots"></i> Explain Q${q.id || (index + 1)}
             </button>
           </div>
-          /* Locate this exact section inside your renderVerificationQuestions loop */
-          <div class="grid grid-cols-1 gap-2 pt-1">
-            ${q.options.map((opt, optIdx) => {
-              const active = q.selectedAnswer === optIdx;
-              return `
-                <button onclick="recordTestAnswer(${index}, ${optIdx})" class="w-full text-left px-4 py-2.5 rounded-xl border text-xs font-light tracking-wide transition-all duration-200 flex items-center justify-between ${
-                  active 
-                    ? 'bg-brand-accent/20 border-brand-accent text-white font-medium shadow-md' 
-                    : 'bg-[#0F0F12] border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/20'
-                }">
-                  <span>${renderMathFormulas(opt)}</span>
-                  <div class="w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${active ? 'border-brand-accent bg-brand-accent' : 'border-gray-700'}">
-                    ${active ? '<i class="fas fa-check text-[7px] text-white"></i>' : ''}
-                  </div>
-                </button>
-              `;
-            }).join('')}
+          <div id="q-options-${index}" class="grid grid-cols-1 gap-2 pt-1">
+            ${generateOptionsHTML(q, index)}
           </div>
         `;
         testViewport.appendChild(card);
       });
       
-      testCounter.textContent = `${solved} / ${verificationQuestions.length} Solved`;
+      updateTestCounter();
     }
 
     function recordTestAnswer(qIndex, optionIndex) {
       verificationQuestions[qIndex].selectedAnswer = optionIndex;
-      renderVerificationQuestions();
+      // ONLY re-render the specific question's options to avoid breaking CSS animations
+      document.getElementById(`q-options-${qIndex}`).innerHTML = generateOptionsHTML(verificationQuestions[qIndex], qIndex);
+      updateTestCounter();
+    }
+
+    function updateTestCounter() {
+      let solved = 0;
+      verificationQuestions.forEach(q => { if(q.selectedAnswer !== null) solved++; });
+      testCounter.textContent = `${solved} / ${verificationQuestions.length} Solved`;
     }
 
     function startTestingClock() {
