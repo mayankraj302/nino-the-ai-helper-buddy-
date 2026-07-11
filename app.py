@@ -68,8 +68,8 @@ def call_genai_with_fallback(contents, system_instruction, temperature=0.7):
 
     # Fixed: Updated to actual active Google GenAI model names
     models = [
-        "gemini-2.0-flash", 
-        "gemini-1.5-flash"
+        "gemini-3.1-flash-lite",
+        "gemini-3.5-flash"
     ]
 
     for model in models:
