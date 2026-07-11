@@ -42,8 +42,12 @@ class SessionManager:
 
     def append_history(self, username, user_content, ai_content):
         if username in self._sessions:
-            self._sessions[username]["history"].append({"role": "user", "content": user_content})
-            self._sessions[username]["history"].append({"role": "model", "content": ai_content})
+            history = self._sessions[username]["history"]
+            history.append({"role": "user", "content": user_content})
+            history.append({"role": "model", "content": ai_content})
+            
+            # Prevent infinite memory/token bloat (keep last 10 messages)
+            self._sessions[username]["history"] = history[-10:]
 
 
 session_store = SessionManager()
@@ -62,9 +66,10 @@ def call_genai_with_fallback(contents, system_instruction, temperature=0.7):
     except Exception as e:
         return f"Initialization Error: {str(e)}"
 
+    # Fixed: Updated to actual active Google GenAI model names
     models = [
-        "gemini-3.1-flash-lite",
-        "gemini-3.5-flash"
+        "gemini-2.0-flash", 
+        "gemini-1.5-flash"
     ]
 
     for model in models:
@@ -146,14 +151,14 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
     If you see any KEYWORD related to above sentences then your-
     >ROLE- Act as an Roommate who is proving a free space to let the student talk and vent and get some relief from isolation and burnout .
     >Context- the student is exhausted and burnt out because of the pressure , isolation and study , a student who is isolated having lots of thoughts in the mind but can't share it with his      parents and friend.  
-    >EMOTION meaning - "exhaustion" (in context of jee) - physically and mentally drained because of pressure and study , "loneliness" - there is no one for the student to share his or her inner            thoughts .
-    >PROBLEM INTERPRETATION - These burnout and isolation are developed when inner motivation of student is dead and he or she is drained by the pressure of study and isolation is caused when he              or she has no one to talk and share their inner thoughts which they can't share with parents or friends.
+    >EMOTION meaning - "exhaustion" (in context of jee) - physically and mentally drained because of pressure and study , "loneliness" - there is no one for the student to share his or her inner           thoughts .
+    >PROBLEM INTERPRETATION - These burnout and isolation are developed when inner motivation of student is dead and he or she is drained by the pressure of study and isolation is caused when he             or she has no one to talk and share their inner thoughts which they can't share with parents or friends.
     >YOUR RESPONSE SHOULD -
     1-ADDRESS - Address his or her burnout or isolation causes only when student is mentioning which thing caused it.
     2-PROVIDE A SPACE-Provide him or her a free space where you are there to hear them without judging him or her by him or her that he or she can trust you and feel free to tell anything .
     3-MOTIVATE-Motivate him or her by making them feel that his or her struggle and isolation can lead to success
     4-DEPICT- Describe his or her life after passing jee and getting iit for example - the proud of parents , friends , happiness.
-    5-If the student is burnt out then tell him or her to take a few minute rest and try to talk to friends or parents to get better feel and show his or her life after IIT and telling him or               her that burnout is temporary but the life after iit can be beautiful.
+    5-If the student is burnt out then tell him or her to take a few minute rest and try to talk to friends or parents to get better feel and show his or her life after IIT and telling him or              her that burnout is temporary but the life after iit can be beautiful.
     6-try to keep response in 8 to 10 lines.
     
     TONE-
@@ -362,8 +367,17 @@ def guide():
         # NEW SMART INTERACTIVE ENGINE PARSING 
         # ==========================================
         try:
-            # Check if the AI returned the structured string layout from your extension prompt
-            parsed_json = json.loads(clean_response)
+            # Clean potential markdown formatting from the LLM
+            clean_json_str = clean_response.strip()
+            if clean_json_str.startswith("```json"):
+                clean_json_str = clean_json_str[7:]
+            elif clean_json_str.startswith("```"):
+                clean_json_str = clean_json_str[3:]
+            if clean_json_str.endswith("```"):
+                clean_json_str = clean_json_str[:-3]
+            
+            # Now parse the cleaned string
+            parsed_json = json.loads(clean_json_str.strip())
             
             # Combine the parsed layout fields with your progress metric naturally
             parsed_json["progress"] = updated_pct
