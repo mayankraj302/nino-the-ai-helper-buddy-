@@ -367,17 +367,32 @@ def guide():
         # NEW SMART INTERACTIVE ENGINE PARSING 
         # ==========================================
         try:
-            # Clean potential markdown formatting from the LLM
-            clean_json_str = clean_response.strip()
-            if clean_json_str.startswith("```json"):
-                clean_json_str = clean_json_str[7:]
-            elif clean_json_str.startswith("```"):
-                clean_json_str = clean_json_str[3:]
-            if clean_json_str.endswith("```"):
-                clean_json_str = clean_json_str[:-3]
+            json_str = ""
             
-            # Now parse the cleaned string
-            parsed_json = json.loads(clean_json_str.strip())
+            # 1. Safest method: Look for the markdown code block containing JSON
+            markdown_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', clean_response, re.DOTALL | re.IGNORECASE)
+            
+            if markdown_match:
+                json_str = markdown_match.group(1)
+            else:
+                # 2. Backup method: Find the exact signature of our expected JSON
+                match = re.search(r'\{\s*"chatResponse"', clean_response, re.IGNORECASE)
+                if match:
+                    start_idx = match.start()
+                    end_idx = clean_response.rfind('}')
+                    if end_idx > start_idx:
+                        json_str = clean_response[start_idx:end_idx+1]
+                else:
+                    # 3. Final hail mary: Basic curly brace search
+                    start_idx = clean_response.find('{')
+                    end_idx = clean_response.rfind('}')
+                    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                        json_str = clean_response[start_idx:end_idx+1]
+
+            if not json_str:
+                raise ValueError("No JSON payload detected.")
+
+            parsed_json = json.loads(json_str)
             
             # Normalize keys to lowercase for total structural safety
             normalized_json = {k.lower(): v for k, v in parsed_json.items()}
@@ -390,7 +405,7 @@ def guide():
                 "progress": updated_pct
             })
             
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, json.JSONDecodeError):
             # Fallback: If it's a regular conversation text block, format it normally
             return jsonify({
                 "response": clean_response,
@@ -399,7 +414,6 @@ def guide():
                 "testTitle": "",
                 "questions": []
             })
-
     except Exception as e:
         return jsonify({"response": f"Error: {str(e)}"}), 500
 
