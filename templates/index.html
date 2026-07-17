@@ -311,7 +311,8 @@
 
       <div id="split-slider" class="split-resizer hidden"></div>
 
-      <div id="test-section" class="h-full bg-brand-testBg border-l border-white/5 flex flex-col min-w-[0%] w-[0%] hidden relative overflow-hidden transition-all duration-75">
+      <!-- TEST SECTION WITH NEW RESPONSIVE CLASSES -->
+      <div id="test-section" class="h-full bg-brand-testBg md:border-l border-white/5 flex flex-col hidden absolute md:relative inset-0 md:inset-auto z-50 md:z-auto w-full md:w-[0%] overflow-hidden transition-all duration-75">
         
         <div id="test-configurator-screen" class="absolute inset-0 bg-brand-testBg z-50 flex flex-col items-center justify-center p-6 space-y-6">
           <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-lg">
@@ -567,30 +568,65 @@
       });
     }
 
+    /* RESPONSIVE LAYOUT TOGGLING */
     function setSplitView(chatWidthPercent) {
-      let testWidthPercent = 100 - chatWidthPercent;
-      chatSection.style.width = `${chatWidthPercent}%`;
-      testSection.style.width = `${testWidthPercent}%`;
+      if (window.innerWidth < 768) {
+        // Mobile: Test overlays chat entirely; no split widths needed.
+        chatSection.style.width = '100%';
+        testSection.style.width = '100%';
+      } else {
+        // Desktop: Normal resizable split logic
+        let testWidthPercent = 100 - chatWidthPercent;
+        chatSection.style.width = `${chatWidthPercent}%`;
+        testSection.style.width = `${testWidthPercent}%`;
+      }
     }
 
-    /* ADVANCED LIVE TESTING LOGIC MAP */
     function openTestingInterface(topic) {
       examinationActive = true;
       currentTopicContext = topic || "IIT-JEE Target Matrix";
       document.getElementById("config-topic-title").textContent = `Calibrating: ${currentTopicContext}`;
-      
-      // Reveal the container view using clean layout flags
+
       testSection.classList.remove('hidden');
-      splitSlider.classList.remove('hidden');
       
-      // Animate entry split frame smoothly to 50:50 view
-      setTimeout(() => {
-        chatSection.classList.remove('w-[100%]');
-        setSplitView(55);
-        testSection.style.minWidth = "25%";
-      }, 5);
-      
+      // Clear any lingering mobile return buttons
+      const returnBtn = document.getElementById('return-test-btn');
+      if (returnBtn) returnBtn.remove(); 
+
+      if (window.innerWidth < 768) {
+        // Mobile: Full screen overlay mode
+        setSplitView(100);
+        splitSlider.classList.add('hidden');
+      } else {
+        // Desktop: Split view mode
+        splitSlider.classList.remove('hidden');
+        setTimeout(() => {
+          chatSection.classList.remove('w-[100%]');
+          setSplitView(55);
+          testSection.style.minWidth = "25%";
+        }, 5);
+      }
+
       testConfiguratorScreen.classList.remove('hidden');
+    }
+
+    function closeTestingInterface() {
+      clearInterval(examCountdownInterval);
+      examinationActive = false;
+
+      chatSection.style.width = "100%";
+      if (window.innerWidth >= 768) {
+        testSection.style.width = "0%";
+      }
+
+      setTimeout(() => {
+        testSection.classList.add('hidden');
+        splitSlider.classList.add('hidden');
+        
+        // Clean up the floating button if they close the test entirely
+        const returnBtn = document.getElementById('return-test-btn');
+        if (returnBtn) returnBtn.remove();
+      }, 100);
     }
 
     function commitTestInitialization() {
@@ -717,30 +753,39 @@
 
     /* REALTIME DOUBLE WINDOW CONTEXT SHIFTING (Doubt Solver Integration) */
     function requestRealtimeDoubtSupport(questionId) {
-      // Pull split-view to 50:50 so student can see both windows comfortably
-      setSplitView(50);
-      
-      // Find the exact question data the AI generated
+      if (window.innerWidth < 768) {
+        // Mobile: Hide the test to reveal the chat underneath, and show a return button
+        testSection.classList.add('hidden');
+        showMobileReturnButton();
+      } else {
+        // Desktop: Shift layout to 50:50 so they can comfortably see both side-by-side
+        setSplitView(50);
+      }
+
       const targetQuestion = verificationQuestions.find(q => q.id === questionId);
-      
       if (targetQuestion) {
-        // Inject the actual question text inside the prompt so the AI has full real-time awareness
         input.value = `I am stuck on Question ${questionId} in the test panel:\n\n"${targetQuestion.question}"\n\nCan you explain the conceptual core of this problem and guide me to the right answer?`;
         input.focus();
         input.style.height = input.scrollHeight + 'px';
       }
     }
 
-    function closeTestingInterface() {
-      clearInterval(examCountdownInterval);
-      examinationActive = false;
+    function showMobileReturnButton() {
+      if (document.getElementById('return-test-btn')) return;
       
-      chatSection.style.width = "100%";
-      testSection.style.width = "0%";
-      setTimeout(() => {
-        testSection.classList.add('hidden');
-        splitSlider.classList.add('hidden');
-      }, 100);
+      const btn = document.createElement('button');
+      btn.id = 'return-test-btn';
+      // Styled as a highly visible, floating pill at the top of the chat
+      btn.className = 'fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-brand-emerald hover:bg-emerald-500 text-white px-5 py-2.5 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.3)] text-xs font-bold flex items-center gap-2 border border-emerald-400 transition-all active:scale-95';
+      btn.innerHTML = '<i class="fas fa-undo"></i> Return to Active Test';
+      
+      btn.onclick = () => {
+        // Unhide the test overlay and remove this button
+        testSection.classList.remove('hidden');
+        btn.remove();
+      };
+      
+      document.body.appendChild(btn);
     }
 
     function evaluateExamSubmission() {
@@ -820,6 +865,19 @@
     }
     input.addEventListener('keydown', e => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
     input.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; });
+    
+    // Optional: Gracefully handle window resizing so if a user rotates their phone or resizes browser, layout updates
+    window.addEventListener('resize', () => {
+      if(examinationActive) {
+        if (window.innerWidth < 768) {
+          setSplitView(100);
+          splitSlider.classList.add('hidden');
+        } else {
+          setSplitView(50);
+          splitSlider.classList.remove('hidden');
+        }
+      }
+    });
   </script>
 </body>
 </html>
