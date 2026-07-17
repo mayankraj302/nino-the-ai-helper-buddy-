@@ -234,7 +234,7 @@ Deliver your unique dynamic questions strictly in the following JSON format:
       "question": "[Insert unique Question here using standard $...$ for inline equations]",
       "options": ["$[Option A Formula]$", "$[Option B Formula]$", "$[Option C Formula]$", "$[Option D Formula]$"],
       "correct": 0
-    }
+    }}
   ]
 }}
 
