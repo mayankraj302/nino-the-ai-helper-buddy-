@@ -7,8 +7,9 @@ from google import genai
 from google.genai import types
 from werkzeug.utils import secure_filename
 
-# Explicit top-level assignment for web compilers (e.g., Vercel / Render)
-app = Flask(__name__, template_folder='templates') 
+# Clean initialization without hidden unicode characters
+app = Flask(__name__, template_folder='templates')
+application = app  # Explicit alias for WSGI servers (AWS Elastic Beanstalk, etc.)
 
 # Allowed file configurations for image/document parsing
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
