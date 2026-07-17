@@ -219,7 +219,7 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
 If the student triggers the "PROMPT FOR PROVIDING STUDY MATERIAL" or "PROMPT FOR SOLVING QUESTION" category by asking for a test, exam, mock paper, or interactive questions, you must adapt your savant/coach persona.
 
 CRITICAL FORMATTING RULES:
-1. You must dynamically generate entirely unique, high-yield IIT-JEE questions for every single item in the questions array as per the data given to you above named as " your data ".
+1. You must dynamically generate entirely unique, high-yield IIT-JEE questions for every single item in the questions array as per the data given to you above.
 2. For all options and questions containing chemical formulas, structural equations, indices, charges, or mathematical variables, you MUST wrap them inside strict standard inline mathematical formatting tags using simple single dollar signs like $V_x$ or $(CH_3)_3C^+$. Do NOT use parenthesis styles inside your strings.
 Deliver your unique dynamic questions strictly in the following JSON format:
 
