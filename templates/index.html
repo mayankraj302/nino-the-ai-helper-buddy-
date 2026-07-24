@@ -526,27 +526,34 @@
     async function switchChat(chatId) {
       currentChatId = chatId;
       chat.innerHTML = "";
-      renderSidebarList();
+      renderSidebarList(); // Update highlight
       
       if(window.innerWidth < 768 && !sidebar.classList.contains("-translate-x-full")) {
         toggleMobileMenu();
       }
 
+      // Always stamp the initial AI greeting at the top instantly
+      addMessage("Welcome buddy, I am Nino your personal friend who can teach you, help you listen to you without even judging, so tell me how can i help you today to make you slightly more near your goal?", "ai", true);
+
+      // Fetch the specific chat's history from the backend
       try {
         const res = await fetch(`/api/chat/${chatId}`);
+        if (!res.ok) throw new Error("Backend not found");
         const data = await res.json();
         
+        // If history exists, inject it into the chat window
         if (data.history && data.history.length > 0) {
           data.history.forEach(msg => {
             const sender = msg.role === 'model' || msg.role === 'assistant' ? 'ai' : 'user';
-            addMessage(msg.content, sender);
+            addMessage(msg.content, sender, true); // true = skip animation
           });
-        } else {
-          initSystemGreeting();
         }
+        
+        // Force scroll to the very bottom after history loads
+        setTimeout(() => { chat.scrollTop = chat.scrollHeight; }, 50);
+        
       } catch (e) {
-        console.error("Failed to fetch history");
-        initSystemGreeting();
+        console.error("Failed to fetch history", e);
       }
     }
 
@@ -681,21 +688,29 @@
       filePreviewZone.classList.add("hidden");
     }
 
-    function addMessage(text, sender, isSandboxMsg = false, uploadedFileName = null) {
+    function addMessage(text, sender, isHistoryLoad = false, uploadedFileName = null) {
       const wrapper = document.createElement("div");
-      wrapper.className = sender === "user" ? "flex justify-end opacity-0 scale-[0.99] animate-[logoReveal_0.15s_ease-out_forwards]" : "flex justify-start opacity-0 scale-[0.99] animate-[logoReveal_0.15s_ease-out_forwards]";
+      
+      // If we are loading history, disable the animation so it instantly appears
+      const animationStyles = isHistoryLoad 
+        ? "opacity-100" 
+        : "opacity-0 scale-[0.99] animate-[logoReveal_0.15s_ease-out_forwards]";
+        
+      wrapper.className = sender === "user" 
+        ? `flex justify-end ${animationStyles}` 
+        : `flex justify-start ${animationStyles}`;
+        
       let formattedText = renderMathFormulas(text);
       let finalContent = sender === 'user' ? text : marked.parse(formattedText);
       let bubbleClass = sender === 'user' ? 'user-bubble' : 'ai-bubble';
 
       wrapper.innerHTML = `<div class="${bubbleClass} px-4 py-3 max-w-[90%] md:max-w-[75%] prose prose-invert text-[15px] leading-relaxed">${finalContent}</div>`;
       chat.appendChild(wrapper);
-      setTimeout(() => { chat.scrollTop = chat.scrollHeight; }, 20);
-    }
-
-    function initSystemGreeting() {
-      addMessage("Welcome buddy, I am Nino your personal friend who can teach you, help you listen to you without even judging, so tell me how can i help you today to make you slightly more near your goal?", "ai");
-      step = 1;
+      
+      // Only smoothly scroll if it's a live message
+      if (!isHistoryLoad) {
+        setTimeout(() => { chat.scrollTop = chat.scrollHeight; }, 20);
+      }
     }
 
     /* SPLIT RESIZER CORE INTERACTION ENGINE */
