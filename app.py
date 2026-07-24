@@ -47,7 +47,11 @@ class SessionManager:
             self._sessions[username] = {
                 "pct": 10,
                 "goal": default_interest,
-                "history": []
+                "history": [],
+                "settings": {
+                    "mode": "adaptive", # can be adaptive, strict, or supportive
+                    "theme": "dark"
+                }
             }
             self._save_memory()
         return self._sessions[username]
@@ -345,6 +349,34 @@ def home():
 @app.route('/api/health', methods=['GET'])
 def health():
     return jsonify({"status": "ok"}), 200
+    
+
+@app.route('/api/profile', methods=['GET'])
+def get_profile():
+    name = request.args.get('name', 'Anonymous')
+    # Default to general strategy if no session exists yet
+    session = session_store.get_or_create(name, "General Study Optimization")
+    
+    return jsonify({
+        "name": name,
+        "goal": session["goal"],
+        "progress": session["pct"]
+    })
+
+@app.route('/api/settings', methods=['GET', 'POST'])
+def handle_settings():
+    name = request.args.get('name', 'Anonymous') if request.method == 'GET' else (request.json.get('name', 'Anonymous') if request.is_json else 'Anonymous')
+    session = session_store.get_or_create(name, "General Study Optimization")
+    
+    if request.method == 'POST':
+        new_settings = request.json.get('settings', {})
+        if 'settings' not in session:
+            session['settings'] = {}
+        session['settings'].update(new_settings)
+        session_store._save_memory()
+        return jsonify({"status": "success", "settings": session['settings']})
+        
+    return jsonify({"settings": session.get('settings', {"mode": "adaptive", "theme": "dark"})})
 
 
 @app.route('/guide', methods=['POST'])
