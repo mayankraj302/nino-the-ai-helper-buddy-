@@ -488,34 +488,41 @@
 
     function renderSidebarList(newChatId = null) {
       if (chatSessions.length === 0) {
+        // Apply centered, faded styling for the empty state
+        historyContainer.className = "flex-1 overflow-y-auto px-3 py-2 no-scrollbar flex flex-col justify-center items-center opacity-50";
         historyContainer.innerHTML = `
-          <div class="flex flex-col justify-center items-center opacity-50 h-full">
+          <div class="flex flex-col justify-center items-center h-full">
             <i class="fas fa-comment-slash text-2xl text-gray-600 mb-2"></i>
             <div class="text-xs font-medium text-gray-500 px-2 text-center">No recent chats</div>
           </div>`;
         return;
       }
 
-      historyContainer.innerHTML = '<div class="text-[11px] font-semibold text-gray-500 px-2 pb-1">Recent Conversations</div>';
+      // Remove centering and opacity, apply normal top-aligned list styling
+      historyContainer.className = "flex-1 overflow-y-auto px-3 py-2 space-y-1 no-scrollbar flex flex-col justify-start";
+      
+      // Add the section header
+      historyContainer.innerHTML = '<div class="text-[11px] font-semibold text-gray-500 px-2 pb-2 pt-2">Recent Conversations</div>';
       
       chatSessions.forEach(session => {
         const isNew = session.id === newChatId;
         const isActive = session.id === currentChatId;
         
         const btn = document.createElement('button');
-        btn.className = `history-item w-full text-left flex items-center justify-between text-[13px] rounded-lg px-2.5 py-2 transition group relative ${isActive ? 'bg-white/10 text-white' : 'text-gray-400 hover:bg-white/5'} ${isNew ? 'animate-new-chat' : ''}`;
+        // Cleaned up padding and text colors for better visibility
+        btn.className = `history-item w-full text-left flex items-center justify-between text-[13px] rounded-lg px-3 py-2.5 transition group relative ${isActive ? 'bg-white/10 text-white font-medium' : 'text-gray-300 hover:bg-white/5 hover:text-white'} ${isNew ? 'animate-new-chat' : ''}`;
         btn.onclick = () => switchChat(session.id);
         
         btn.innerHTML = `
-          <div class="truncate pr-4 flex-1 flex items-center gap-2">
-            <i class="fas fa-message text-[10px] opacity-50"></i>
+          <div class="truncate pr-4 flex-1 flex items-center gap-3">
+            <i class="fas fa-message text-[11px] ${isActive ? 'text-indigo-400' : 'text-gray-500'}"></i>
             ${session.title}
           </div>
         `;
         historyContainer.appendChild(btn);
       });
     }
-
+  
     async function switchChat(chatId) {
       currentChatId = chatId;
       chat.innerHTML = "";
