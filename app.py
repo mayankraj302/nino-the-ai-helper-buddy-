@@ -378,6 +378,15 @@ def handle_settings():
         
     return jsonify({"settings": session.get('settings', {"mode": "adaptive", "theme": "dark"})})
 
+@app.route('/api/chat/<chat_id>', methods=['GET'])
+def get_chat_history(chat_id):
+    # Retrieve the specific chat session from the local JSON memory
+    session = session_store._sessions.get(chat_id, {})
+    return jsonify({
+        "history": session.get("history", []),
+        "goal": session.get("goal", "General Study Optimization"),
+        "pct": session.get("pct", 10)
+    })
 
 @app.route('/guide', methods=['POST'])
 def guide():
