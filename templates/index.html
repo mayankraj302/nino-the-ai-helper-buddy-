@@ -148,6 +148,9 @@
     .animate-item-entry {
       animation: itemEntry 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
+    
+    /* Sidebar Item Active/Hover State */
+    .history-item:hover .history-action { opacity: 1; }
   </style>
 </head>
 <body class="splash-active text-slate-200 selection:bg-indigo-500/30">
@@ -163,99 +166,87 @@
     </div>
   </div>
 
-  <div id="info-sheet" class="fixed inset-0 z-[150] hidden bg-[#0F0F12]/80 backdrop-blur-sm flex items-end justify-center p-0 transition-opacity duration-300" onclick="closeInfoSheet()">
-    <div class="w-full max-w-md bg-[#16171E] border-t border-white/10 rounded-t-2xl p-6 space-y-4 transform translate-y-full transition-transform duration-300" onclick="event.stopPropagation()">
-      <div class="w-12 h-1 bg-gray-700 rounded-full mx-auto mb-2"></div>
-      <div class="flex items-start gap-3">
-        <div class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 shrink-0 mt-0.5">
-          <i class="fas fa-circle-info"></i>
-        </div>
-        <div>
-          <h3 id="sheet-title" class="text-sm font-bold text-white uppercase tracking-wider">Metric Insights</h3>
-          <p id="sheet-body" class="text-xs text-gray-400 mt-1 leading-relaxed"></p>
-        </div>
-      </div>
-      <button onclick="closeInfoSheet()" class="w-full bg-[#1C1D26] hover:bg-white/10 hover:text-white border border-white/5 text-sm font-semibold py-3 rounded-xl text-gray-300 transition active:scale-[0.98]">
-        Dismiss
-      </button>
-    </div>
-  </div>
-
   <div class="flex app-container overflow-hidden w-full relative premium-glow-bg">
     
     <div id="sidebar-backdrop" class="fixed inset-0 bg-black/60 z-30 hidden md:hidden" onclick="toggleMobileMenu()"></div>
     
-    <div id="sidebar" class="fixed inset-y-0 left-0 z-40 w-72 bg-[#16171E] border-r border-white/5 transform -translate-x-full transition-transform duration-300 ease-in-out md:relative md:translate-x-0 flex flex-col h-full shrink-0">
-      <div class="p-4 border-b border-white/5 flex flex-col gap-2">
-        <div class="flex justify-between items-center">
+    <div id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-[#16171E] border-r border-white/5 transform -translate-x-full transition-transform duration-300 ease-in-out md:relative md:translate-x-0 flex flex-col h-full shrink-0">
+      
+      <!-- Top Section: Header & New Chat -->
+      <div class="p-3 flex flex-col gap-4">
+        <div class="flex justify-between items-center px-1">
           <div class="flex items-center gap-2.5">
-            <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#4F46E5] to-[#3730A3] flex items-center justify-center text-white text-xs ring-1 ring-white/10">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4F46E5] to-[#3730A3] flex items-center justify-center text-white text-sm ring-1 ring-white/10 shadow-lg">
               <i class="fas fa-compass"></i>
             </div>
             <div>
-              <h1 class="text-xs font-bold text-white tracking-tight">Helper Buddy</h1>
-              <p class="text-[8px] text-gray-500 font-bold tracking-widest uppercase">Advisory Terminal</p>
+              <h1 class="text-sm font-bold text-white tracking-tight">Helper Buddy</h1>
             </div>
           </div>
           <button onclick="toggleMobileMenu()" class="md:hidden text-gray-400 hover:text-white p-2 text-sm rounded-lg hover:bg-white/5 transition"><i class="fas fa-times"></i></button>
         </div>
         
-        <div class="mt-1.5 bg-[#4F46E5]/10 hover:bg-[#4F46E5]/15 cursor-pointer border border-[#4F46E5]/20 rounded-lg px-2.5 py-1.5 flex items-center justify-between transition" onclick="openInfoSheet('window')">
-          <div class="flex items-center gap-2">
-            <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
-            <span class="text-[9px] font-bold text-gray-300 uppercase tracking-wide">Instance Allocation Active</span>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <div id="scarcity-countdown" class="text-[9px] font-mono text-[#818CF8] bg-[#0F0F12] px-1.5 py-0.5 rounded border border-white/5">14:59</div>
-            <i class="fas fa-circle-info text-[9px] text-gray-500"></i>
-          </div>
-        </div>
-      </div>
-
-      <div class="p-3 border-b border-white/5">
-        <button onclick="confirmReset()" class="w-full bg-[#0F0F12] hover:bg-[#1C1D26] hover:border-white/10 hover:text-white border border-white/5 py-2 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-2 text-gray-400 shadow-sm active:scale-[0.98]">
-          <i class="fas fa-sync text-gray-500 text-[9px]"></i> Reset Performance Track
+        <button onclick="startNewChat()" class="w-full bg-transparent hover:bg-white/5 border border-white/10 py-2.5 px-3 rounded-lg text-sm font-medium flex items-center justify-start gap-2.5 text-gray-200 transition active:scale-[0.98]">
+          <i class="fas fa-plus text-xs"></i> New chat
         </button>
       </div>
 
-      <div class="p-4 flex-1 overflow-y-auto space-y-3 no-scrollbar">
-        <h3 class="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Active Diagnostic Telemetry</h3>
+      <!-- Scrollable History Section -->
+      <div class="flex-1 overflow-y-auto px-3 py-2 space-y-5 no-scrollbar">
         
-        <div class="bg-[#0F0F12] hover:bg-[#16171E] border border-white/5 hover:border-white/10 cursor-pointer rounded-xl p-3.5 space-y-0.5 relative overflow-hidden transition" onclick="openInfoSheet('velocity')">
-          <div class="flex justify-between items-center">
-            <p class="text-[9px] font-medium text-gray-400 uppercase tracking-wider">Performance Velocity Index</p>
-            <i class="fas fa-circle-info text-[9px] text-gray-600"></i>
-          </div>
-          <p id="metric-velocity" class="text-lg font-bold text-white tracking-tight">Top --%</p>
-          <p class="text-[8px] text-gray-500 mt-0.5">Percentile bracket against milestone parameters</p>
+        <!-- Today Group -->
+        <div class="space-y-1">
+          <div class="text-[11px] font-semibold text-gray-500 px-2 pb-1">Today</div>
+          
+          <button class="history-item w-full text-left flex items-center justify-between text-gray-300 text-[13px] bg-white/5 rounded-lg px-2.5 py-2 transition group relative">
+            <div class="truncate pr-4 flex-1">Solving Electromagnetism Flux</div>
+            <div class="history-action opacity-0 absolute right-2 bg-[#1C1D26] p-1 rounded transition-opacity">
+              <i class="fas fa-ellipsis-h text-gray-400 hover:text-white text-xs"></i>
+            </div>
+          </button>
+          
+          <button class="history-item w-full text-left flex items-center justify-between text-gray-400 text-[13px] hover:bg-white/5 rounded-lg px-2.5 py-2 transition group relative">
+            <div class="truncate pr-4 flex-1">Calculus Integration Doubts</div>
+            <div class="history-action opacity-0 absolute right-2 bg-[#16171E] group-hover:bg-[#1C1D26] p-1 rounded transition-opacity">
+              <i class="fas fa-ellipsis-h text-gray-400 hover:text-white text-xs"></i>
+            </div>
+          </button>
         </div>
 
-        <div class="bg-[#0F0F12] hover:bg-[#16171E] border border-white/5 hover:border-white/10 cursor-pointer rounded-xl p-3.5 space-y-2 transition" onclick="openInfoSheet('autompany')">
-          <div class="flex justify-between items-center">
-            <p class="text-[9px] font-medium text-gray-400 uppercase tracking-wider">Execution Autonomy Factor</p>
-            <i class="fas fa-circle-info text-[9px] text-gray-600"></i>
-          </div>
-          <input type="range" min="1" max="100" value="30" class="w-full accent-[#4F46E5] h-1 bg-[#16171E] rounded-lg pointer-events-none">
-          <div class="flex justify-between text-[8px] text-gray-500 font-bold uppercase tracking-wider">
-            <span>Rigid Framework</span>
-            <span class="text-[#818CF8]">Adaptive Mastery</span>
-          </div>
+        <!-- Previous 7 Days Group -->
+        <div class="space-y-1">
+          <div class="text-[11px] font-semibold text-gray-500 px-2 pb-1">Previous 7 Days</div>
+          
+          <button class="history-item w-full text-left flex items-center justify-between text-gray-400 text-[13px] hover:bg-white/5 rounded-lg px-2.5 py-2 transition group relative">
+            <div class="truncate pr-4 flex-1">Organic Chemistry Mock Test</div>
+            <div class="history-action opacity-0 absolute right-2 bg-[#16171E] group-hover:bg-[#1C1D26] p-1 rounded transition-opacity">
+              <i class="fas fa-ellipsis-h text-gray-400 hover:text-white text-xs"></i>
+            </div>
+          </button>
+
+          <button class="history-item w-full text-left flex items-center justify-between text-gray-400 text-[13px] hover:bg-white/5 rounded-lg px-2.5 py-2 transition group relative">
+            <div class="truncate pr-4 flex-1">Feeling burnt out today</div>
+            <div class="history-action opacity-0 absolute right-2 bg-[#16171E] group-hover:bg-[#1C1D26] p-1 rounded transition-opacity">
+              <i class="fas fa-ellipsis-h text-gray-400 hover:text-white text-xs"></i>
+            </div>
+          </button>
         </div>
       </div>
 
-      <div class="p-3 border-t border-white/5 bg-[#0F0F12]/30 mt-auto w-full">
-        <div class="bg-[#0F0F12] border border-white/5 rounded-xl p-3 space-y-2 shadow-md">
-          <p class="text-[9px] font-medium text-gray-400 uppercase">Your Mentoring Progress</p>
-          <p id="metric-progress-pct" class="text-lg font-bold text-white">10%</p>
-          <p class="text-[8px] text-gray-500">Sessions completed</p>
-        </div>
-        <div class="h-1 bg-[#16171E] rounded-full overflow-hidden p-[1px] border border-white/5 mt-2">
-          <div id="progress-bar" class="h-full bg-gradient-to-r from-[#4F46E5] to-[#818CF8] rounded-full transition-all duration-500 w-[10%]"></div>
-        </div>
-        <div class="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-gray-400 pt-1.5">
-          <i class="fas fa-unlock-keyhole text-indigo-400" id="stage-icon"></i>
-          <span id="progress-text" class="truncate">1. Trajectory Discovery</span>
-        </div>
+      <!-- Bottom Profile / Settings Section -->
+      <div class="p-3 border-t border-white/5">
+        <button class="w-full flex items-center gap-3 hover:bg-white/5 rounded-lg px-3 py-2.5 transition text-[13px] text-gray-300 font-medium">
+          <div class="w-6 h-6 rounded-md bg-indigo-500/20 flex items-center justify-center text-indigo-400 text-xs shrink-0">
+            <i class="fas fa-user"></i>
+          </div>
+          My Profile
+        </button>
+        <button class="w-full flex items-center gap-3 hover:bg-white/5 rounded-lg px-3 py-2.5 transition text-[13px] text-gray-300 font-medium mt-1">
+          <div class="w-6 h-6 flex items-center justify-center text-gray-400 text-sm shrink-0">
+            <i class="fas fa-cog"></i>
+          </div>
+          Settings
+        </button>
       </div>
     </div>
 
@@ -265,46 +256,45 @@
         <div id="top-nav" class="h-12 glass-panel px-4 flex items-center justify-between z-30 w-full shrink-0">
           <div class="flex items-center gap-2">
             <button onclick="toggleMobileMenu()" class="md:hidden p-1.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition text-sm"><i class="fas fa-bars-staggered"></i></button>
-            <span id="header-step" class="text-[9px] font-bold text-gray-400 tracking-widest uppercase">Strategy Calibration Channel</span>
+            <span id="header-step" class="text-[11px] font-medium text-gray-300">IIT-JEE Advisory Mode</span>
           </div>
-          <div id="sync-badge" class="flex items-center gap-1.5 bg-[#4F46E5]/10 px-2.5 py-0.5 rounded-full border border-[#4F46E5]/20">
-            <span class="w-1 h-1 bg-[#4F46E5] rounded-full animate-pulse"></span>
-            <span id="sync-text" class="text-[8px] font-bold text-[#818CF8] uppercase tracking-wider">Strategy Sync</span>
+          <div id="sync-badge" class="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-white/5 transition cursor-pointer">
+            <i class="fas fa-share-nodes text-xs text-gray-400"></i>
           </div>
         </div>
 
-        <div id="chat-window" class="chat-window p-4 md:p-6 space-y-4 w-full"></div>
+        <div id="chat-window" class="chat-window p-4 md:p-6 space-y-4 w-full max-w-4xl mx-auto"></div>
 
-        <div id="chips-container" class="flex gap-2 p-4 overflow-x-auto no-scrollbar shrink-0 max-w-3xl mx-auto w-full">
+        <div id="chips-container" class="flex gap-2 p-4 overflow-x-auto no-scrollbar shrink-0 max-w-4xl mx-auto w-full">
           <button onclick="useSuggestion('Generate a mock test for Physics Magnetism')" class="px-3 py-1.5 bg-[#16171E] border border-white/5 rounded-lg text-xs text-gray-400 hover:text-white hover:border-white/10 hover:bg-[#1C1D26] active:scale-95 whitespace-nowrap transition">🧲 Physics Magnetism Test</button>
           <button onclick="useSuggestion('Give me sample questions for Organic Chemistry')" class="px-3 py-1.5 bg-[#16171E] border border-white/5 rounded-lg text-xs text-gray-400 hover:text-white hover:border-white/10 hover:bg-[#1C1D26] active:scale-95 whitespace-nowrap transition">🧪 Organic Chemistry Test</button>
         </div>
 
-        <div class="p-3 bg-transparent shrink-0 w-full z-20">
-          <div class="max-w-3xl mx-auto">
-            <div id="file-preview-zone" class="hidden bg-[#16171E] border border-b-0 border-white/5 rounded-t-xl p-2.5 flex items-center justify-between">
-              <div class="flex items-center gap-2 overflow-hidden">
-                <div class="w-8 h-8 rounded bg-white/5 flex items-center justify-center text-indigo-400 shrink-0">
-                  <i class="fas fa-file-image" id="preview-icon"></i>
+        <div class="p-3 pb-6 bg-transparent shrink-0 w-full z-20">
+          <div class="max-w-4xl mx-auto relative">
+            <div id="file-preview-zone" class="hidden absolute bottom-full mb-2 left-0 right-0 bg-[#16171E] border border-white/10 rounded-xl p-3 flex items-center justify-between shadow-xl backdrop-blur-md">
+              <div class="flex items-center gap-3 overflow-hidden">
+                <div class="w-10 h-10 rounded bg-indigo-500/10 flex items-center justify-center text-indigo-400 shrink-0 border border-indigo-500/20">
+                  <i class="fas fa-file-image text-lg" id="preview-icon"></i>
                 </div>
-                <span id="preview-filename" class="text-xs text-gray-300 truncate max-w-[200px]">filename.jpg</span>
+                <span id="preview-filename" class="text-sm font-medium text-gray-200 truncate max-w-[200px]">filename.jpg</span>
               </div>
-              <button onclick="clearSelectedFile()" class="w-6 h-6 rounded-full bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition">
-                <i class="fas fa-times text-xs"></i>
+              <button onclick="clearSelectedFile()" class="w-8 h-8 rounded-full bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition">
+                <i class="fas fa-times"></i>
               </button>
             </div>
 
-            <div id="input-container" class="bg-[#16171E] rounded-xl p-1.5 border border-white/5 focus-within:border-[#4F46E5] transition-all flex items-end relative">
+            <div id="input-container" class="bg-[#212121] rounded-2xl p-2 focus-within:ring-1 ring-white/20 transition-all flex items-end relative shadow-lg">
               <input type="file" id="file-uploader" accept=".png,.jpg,.jpeg,.webp,.pdf" class="hidden" onchange="handleFileSelection()">
-              <button onclick="triggerFilePicker()" class="text-gray-400 hover:text-indigo-400 hover:bg-white/5 w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 shadow-md shrink-0 mb-0.5 transition">
-                <i class="fas fa-paperclip text-sm"></i>
+              <button onclick="triggerFilePicker()" class="text-gray-400 hover:text-white hover:bg-white/10 w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 shrink-0 mb-0.5 transition ml-1">
+                <i class="fas fa-paperclip"></i>
               </button>
-              <textarea id="user-input" rows="1" placeholder="Ask for a test, sample paper or clear your doubts..." class="flex-1 bg-transparent px-2 py-1.5 outline-none resize-none text-sm max-h-24 text-gray-100 placeholder-gray-500 leading-normal"></textarea>
-              <button id="send-btn" onclick="send()" class="bg-[#4F46E5] hover:bg-[#4338CA] text-white w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 hover:scale-105 shadow-md shrink-0 ml-1.5 transition">
-                <i class="fas fa-arrow-up text-xs"></i>
+              <textarea id="user-input" rows="1" placeholder="Message Helper Buddy..." class="flex-1 bg-transparent px-3 py-3 outline-none resize-none text-[15px] max-h-32 text-gray-100 placeholder-gray-500 leading-normal"></textarea>
+              <button id="send-btn" onclick="send()" class="bg-white hover:bg-gray-200 text-black w-10 h-10 rounded-xl flex items-center justify-center active:scale-90 shadow-md shrink-0 mr-1 mb-0.5 transition disabled:opacity-50 disabled:bg-gray-700 disabled:text-gray-400">
+                <i class="fas fa-arrow-up"></i>
               </button>
             </div>
-            <p class="text-[7px] text-gray-600 text-center mt-2 uppercase tracking-widest font-bold">AI can also make mistakes , Please double-check (Nino is slightly weak in Maths so please cross-check)</p>
+            <p class="text-xs text-gray-500 text-center mt-3">Helper Buddy can make mistakes. Consider verifying important information.</p>
           </div>
         </div>
       </div>
@@ -348,7 +338,7 @@
 
         <div class="h-12 border-b border-white/5 px-4 flex items-center justify-between shrink-0 bg-brand-testCard">
           <div class="flex items-center gap-3">
-            <span class="text-xs font-bold text-white tracking-tight">Interactive Sandbox Evaluation</span>
+            <span class="text-xs font-bold text-white tracking-tight">Interactive Sandbox</span>
             <div class="bg-red-500/10 border border-red-500/20 rounded px-2 py-0.5 flex items-center gap-1.5 font-mono text-[11px] text-red-400 font-bold shadow-sm" id="test-timer-wrapper">
               <i class="fas fa-clock text-[10px] animate-pulse"></i>
               <span id="test-countdown-clock">00:00</span>
@@ -370,7 +360,7 @@
             <span id="test-counter" class="text-xs text-slate-300 font-mono">0 / 0 Solved</span>
           </div>
           <button onclick="evaluateExamSubmission()" id="submit-exam-btn" class="px-5 py-2.5 bg-brand-emerald hover:bg-emerald-600 text-white rounded-xl text-xs font-semibold shadow-lg active:scale-95 transition flex items-center gap-2">
-            <i class="fas fa-square-check"></i> Complete Verification Loop
+            <i class="fas fa-check"></i> Submit
           </button>
         </div>
       </div>
@@ -391,9 +381,6 @@
     const chat = document.getElementById("chat-window");
     const input = document.getElementById("user-input");
     const sendBtn = document.getElementById("send-btn");
-    const progressBar = document.getElementById("progress-bar");
-    const progressText = document.getElementById("progress-text");
-    const progressPctText = document.getElementById("metric-progress-pct");
     const sidebar = document.getElementById("sidebar");
     const sidebarBackdrop = document.getElementById("sidebar-backdrop");
     const fileUploader = document.getElementById("file-uploader");
@@ -410,12 +397,6 @@
     const testCounter = document.getElementById("test-counter");
     const testCountdownClock = document.getElementById("test-countdown-clock");
 
-    const textPayloads = {
-      window: { title: "Advisory Window Allocation", body: "High-priority systemic resources are reserved for your account session." },
-      velocity: { title: "Performance Velocity Index", body: "An advanced structural metric profiling your mastery layout." },
-      autompany: { title: "Execution Autonomy", body: "Measures your shift into adaptive strategic execution loops." }
-    };
-
     function renderMathFormulas(text) {
       if (typeof katex === 'undefined') return text;
       let formatted = text.replace(/\$\$([\s\S]+?)\$\$/g, (match, expression) => {
@@ -429,19 +410,6 @@
       return formatted;
     }
 
-    function runScarcityTimer() {
-      let duration = 14 * 60 + 59;
-      const display = document.getElementById('scarcity-countdown');
-      setInterval(() => {
-        let minutes = parseInt(duration / 60, 10);
-        let seconds = parseInt(duration % 60, 10);
-        minutes = minutes < 10 ? "0" + minutes : minutes;
-        seconds = seconds < 10 ? "0" + seconds : seconds;
-        if(display) display.textContent = minutes + ":" + seconds;
-        if (--duration < 0) duration = 14 * 60 + 59;
-      }, 1000);
-    }
-
     window.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => {
         const splash = document.getElementById('splash-screen');
@@ -450,7 +418,6 @@
         setTimeout(() => { 
           splash.remove(); 
           initSystemGreeting();
-          runScarcityTimer();
           initializeDraggableResizer();
         }, 200);
       }, 1200);
@@ -469,37 +436,14 @@
       }
     }
 
-    function openInfoSheet(key) {
-      const sheet = document.getElementById('info-sheet');
-      document.getElementById('sheet-title').textContent = textPayloads[key].title;
-      document.getElementById('sheet-body').textContent = textPayloads[key].body;
-      sheet.classList.remove('hidden');
-      setTimeout(() => { sheet.firstElementChild.classList.remove('translate-y-full'); }, 10);
-    }
-
-    function closeInfoSheet() {
-      const sheet = document.getElementById('info-sheet');
-      sheet.firstElementChild.classList.add('translate-y-full');
-      setTimeout(() => { sheet.classList.add('hidden'); }, 300);
-    }
-
     function useSuggestion(t) { input.value = t; send(); }
 
-    function confirmReset() {
+    function startNewChat() {
       userData = {}; step = 0; chat.innerHTML = "";
-      document.getElementById("metric-velocity").textContent = "Top --%";
-      updateUIProgress("10%", "1. Trajectory Discovery");
       clearSelectedFile();
       closeTestingInterface();
       if(!sidebar.classList.contains("-translate-x-full")) toggleMobileMenu();
       initSystemGreeting();
-    }
-
-    function updateUIProgress(pct, customLabel) {
-      progressBar.style.width = pct;
-      if (progressPctText) progressPctText.textContent = pct;
-      const icon = document.getElementById("stage-icon");
-      progressText.textContent = customLabel;
     }
 
     function triggerFilePicker() { fileUploader.click(); }
@@ -508,14 +452,12 @@
         selectedFileObject = fileUploader.files[0];
         previewFilename.textContent = selectedFileObject.name;
         filePreviewZone.classList.remove("hidden");
-        document.getElementById("input-container").classList.add("rounded-t-none");
       }
     }
     function clearSelectedFile() {
       selectedFileObject = null;
       fileUploader.value = "";
       filePreviewZone.classList.add("hidden");
-      document.getElementById("input-container").classList.remove("rounded-t-none");
     }
 
     function addMessage(text, sender, isSandboxMsg = false, uploadedFileName = null) {
@@ -525,14 +467,13 @@
       let finalContent = sender === 'user' ? text : marked.parse(formattedText);
       let bubbleClass = sender === 'user' ? 'user-bubble' : 'ai-bubble';
 
-      wrapper.innerHTML = `<div class="${bubbleClass} px-4 py-3 max-w-[90%] md:max-w-[75%] prose prose-invert text-sm leading-relaxed">${finalContent}</div>`;
+      wrapper.innerHTML = `<div class="${bubbleClass} px-4 py-3 max-w-[90%] md:max-w-[75%] prose prose-invert text-[15px] leading-relaxed">${finalContent}</div>`;
       chat.appendChild(wrapper);
       setTimeout(() => { chat.scrollTop = chat.scrollHeight; }, 20);
     }
 
     function initSystemGreeting() {
-      updateUIProgress("10%", "1. Trajectory Discovery");
-      addMessage("Welcome buddy , I am Nino your personal friend who can teach you , help you listen to you without even judging , so tell me how can i help you today to make you slightly more near your goal ?", "ai");
+      addMessage("Welcome buddy, I am Nino your personal friend who can teach you, help you listen to you without even judging, so tell me how can i help you today to make you slightly more near your goal?", "ai");
       step = 1;
     }
 
@@ -676,14 +617,14 @@
       return q.options.map((opt, optIdx) => {
         const active = q.selectedAnswer === optIdx;
         return `
-          <button onclick="recordTestAnswer(${qIndex}, ${optIdx})" class="w-full text-left px-4 py-2.5 rounded-xl border text-xs font-light tracking-wide transition-all duration-200 flex items-center justify-between ${
+          <button onclick="recordTestAnswer(${qIndex}, ${optIdx})" class="w-full text-left px-4 py-2.5 rounded-xl border text-sm font-light tracking-wide transition-all duration-200 flex items-center justify-between ${
             active 
               ? 'bg-brand-accent/20 border-brand-accent text-white font-medium shadow-md' 
               : 'bg-[#0F0F12] border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/20'
           }">
             <span>${renderMathFormulas(opt)}</span>
-            <div class="w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${active ? 'border-brand-accent bg-brand-accent' : 'border-gray-700'}">
-              ${active ? '<i class="fas fa-check text-[7px] text-white"></i>' : ''}
+            <div class="w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${active ? 'border-brand-accent bg-brand-accent' : 'border-gray-700'}">
+              ${active ? '<i class="fas fa-check text-[10px] text-white"></i>' : ''}
             </div>
           </button>
         `;
@@ -708,7 +649,7 @@
               </div>
             </div>
             <button onclick="requestRealtimeDoubtSupport(${q.id || (index + 1)})" class="text-[10px] text-indigo-400 border border-indigo-500/20 bg-indigo-500/5 px-2.5 py-1 rounded-lg hover:bg-indigo-500/20 hover:text-white shrink-0 transition flex items-center gap-1">
-              <i class="fas fa-comment-dots"></i> Explain Q${q.id || (index + 1)}
+              <i class="fas fa-comment-dots"></i> Explain
             </button>
           </div>
           <div id="q-options-${index}" class="grid grid-cols-1 gap-2 pt-1">
@@ -812,7 +753,7 @@
       const tId = "think-" + Date.now();
       const div = document.createElement("div");
       div.id = tId; div.className = "flex justify-start";
-      div.innerHTML = `<div class="ai-bubble px-4 py-3 text-gray-400 text-[10px] uppercase tracking-widest flex items-center gap-2"><i class="fas fa-circle-notch animate-spin text-[#4F46E5]"></i> Nino is thinking...</div>`;
+      div.innerHTML = `<div class="ai-bubble px-4 py-3 text-gray-400 text-xs flex items-center gap-2"><i class="fas fa-circle-notch animate-spin text-[#4F46E5]"></i> Nino is thinking...</div>`;
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     
@@ -852,16 +793,12 @@
           addMessage(data.response || data.chatResponse || data.ChatResponse, "ai", false);
         }
     
-        // Dynamic telemetry updates 
-        if(data.progress) {
-          updateUIProgress(`${data.progress}%`, data.progress > 40 ? "2. Concept Stabilization" : "1. Trajectory Discovery");
-        }
-    
       } catch (e) {
         if(document.getElementById(tId)) document.getElementById(tId).remove();
         addMessage("### Architecture Timeout\n\nUnable to establish stable telemetry sync to Nino core matrices.", "ai", false);
       }
     }
+    
     input.addEventListener('keydown', e => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
     input.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; });
     
