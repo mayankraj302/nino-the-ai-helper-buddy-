@@ -288,8 +288,8 @@
 
       <div id="split-slider" class="split-resizer hidden"></div>
 
-      <!-- TEST SECTION WITH NEW RESPONSIVE CLASSES -->
-      <div id="test-section" class="h-full bg-brand-testBg md:border-l border-white/5 flex flex-col absolute md:relative inset-0 md:inset-auto z-50 md:z-auto w-full md:w-[0%] transform translate-x-full md:translate-x-0 transition-all duration-300 ease-in-out overflow-hidden shadow-2xl md:shadow-none"> 
+      <!-- TEST SECTION WITH UPDATED RESPONSIVE SLIDE-OVER CLASSES -->
+      <div id="test-section" class="h-full bg-brand-testBg md:border-l border-white/5 flex flex-col absolute md:relative inset-0 md:inset-auto z-[60] md:z-auto w-full md:w-[0%] transform translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out overflow-hidden shadow-2xl md:shadow-none hidden"> 
         <div id="test-configurator-screen" class="absolute inset-0 bg-brand-testBg z-50 flex flex-col items-center justify-center p-6 space-y-6">
           <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-lg">
             <i class="fas fa-sliders animate-pulse"></i>
@@ -330,7 +330,11 @@
               <span id="test-countdown-clock">00:00</span>
             </div>
           </div>
+          <!-- ADDED CHAT BUTTON HERE FOR MOBILE MINIMIZATION -->
           <div class="flex items-center gap-2">
+            <button onclick="toggleMobileTestView()" class="md:hidden text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-md transition active:scale-95">
+              <i class="fas fa-message"></i> Chat
+            </button>
             <button onclick="setSplitView(50)" class="text-[10px] font-mono uppercase px-2 py-1 bg-white/5 border border-white/10 rounded text-gray-300 hover:text-white transition hidden md:inline-block"><i class="fas fa-columns mr-1"></i> Split 50:50</button>
             <button onclick="closeTestingInterface()" class="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-white/5 text-xs transition">
               <i class="fas fa-circle-xmark text-sm"></i> Close
@@ -767,22 +771,29 @@
     }
 
     /* ==========================================
-       TESTING / SANDBOX LOGIC
+       TESTING / SANDBOX LOGIC WITH MOBILE MINIMIZATION
        ========================================== */
 
     function openTestingInterface(topic) {
       examinationActive = true;
       currentTopicContext = topic || "IIT-JEE Target Matrix";
       document.getElementById("config-topic-title").textContent = `Calibrating: ${currentTopicContext}`;
-      testSection.classList.remove('hidden');
       
+      // Setup display state safely for slides
+      testSection.classList.remove('hidden');
+
       const returnBtn = document.getElementById('return-test-btn');
       if (returnBtn) returnBtn.remove(); 
 
       if (window.innerWidth < 768) {
         setSplitView(100);
         splitSlider.classList.add('hidden');
+        // Let CSS trigger a smooth slide-in for mobile drawer effect
+        setTimeout(() => {
+            testSection.classList.remove('translate-x-full');
+        }, 10);
       } else {
+        testSection.classList.remove('translate-x-full'); // ensure it's visible on desktop
         splitSlider.classList.remove('hidden');
         setTimeout(() => {
           chatSection.classList.remove('w-[100%]');
@@ -793,18 +804,31 @@
       testConfiguratorScreen.classList.remove('hidden');
     }
 
+    function toggleMobileTestView() {
+      // Allows user to manually minimize the test pane without submitting
+      if (window.innerWidth < 768) {
+        testSection.classList.add('translate-x-full'); // Slide it out
+        showMobileReturnButton(); // Show return toggle pill
+      }
+    }
+
     function closeTestingInterface() {
       clearInterval(examCountdownInterval);
       examinationActive = false;
       chatSection.style.width = "100%";
-      if (window.innerWidth >= 768) { testSection.style.width = "0%"; }
+      
+      if (window.innerWidth >= 768) { 
+        testSection.style.width = "0%"; 
+      } else {
+        testSection.classList.add('translate-x-full'); // slide out on mobile
+      }
 
       setTimeout(() => {
         testSection.classList.add('hidden');
         splitSlider.classList.add('hidden');
         const returnBtn = document.getElementById('return-test-btn');
         if (returnBtn) returnBtn.remove();
-      }, 100);
+      }, 300); // Wait for the transition to finish sliding
     }
     
     function commitTestInitialization() {
@@ -923,7 +947,7 @@
 
     function requestRealtimeDoubtSupport(questionId) {
       if (window.innerWidth < 768) {
-        testSection.classList.add('hidden');
+        testSection.classList.add('translate-x-full'); // Smoothly slide away test
         showMobileReturnButton();
       } else {
         setSplitView(50);
@@ -941,11 +965,12 @@
       if (document.getElementById('return-test-btn')) return;
       const btn = document.createElement('button');
       btn.id = 'return-test-btn';
-      btn.className = 'fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-brand-emerald hover:bg-emerald-500 text-white px-5 py-2.5 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.3)] text-xs font-bold flex items-center gap-2 border border-emerald-400 transition-all active:scale-95';
-      btn.innerHTML = '<i class="fas fa-undo"></i> Return to Active Test';
+      // Placed slightly floating at the top inside the chat area
+      btn.className = 'fixed top-16 left-1/2 -translate-x-1/2 z-[60] bg-brand-emerald hover:bg-emerald-500 text-white px-5 py-2.5 rounded-full shadow-[0_4px_15px_rgba(16,185,129,0.3)] text-xs font-bold flex items-center gap-2 border border-emerald-400 transition-all active:scale-95';
+      btn.innerHTML = '<i class="fas fa-clipboard-list"></i> Return to Active Test';
       
       btn.onclick = () => {
-        testSection.classList.remove('hidden');
+        testSection.classList.remove('translate-x-full');
         btn.remove();
       };
       document.body.appendChild(btn);
@@ -1043,6 +1068,10 @@
         } else {
           setSplitView(50);
           splitSlider.classList.remove('hidden');
+          // If resizing to desktop, clean up the mobile return button if it's there
+          const returnBtn = document.getElementById('return-test-btn');
+          if (returnBtn) returnBtn.remove();
+          testSection.classList.remove('translate-x-full'); 
         }
       }
     });
