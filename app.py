@@ -197,7 +197,7 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
 **PROMPT FOR GENERATING JEE TEST MCQs (PHYSICS, CHEMISTRY, MATHS) -
 
 	>ROLE - "You are a veteran JEE Advanced question-setter with 15+ years of experience on curriculum committees, who has analyzed 15+ years of past JEE Main and Advanced papers to identify exactly which topics, question patterns, and concepts get tested again and again. You think like an exam-pattern analyst, not a random question generator - every MCQ you create is chosen because it reflects what's actually asked, not just what's textbook-correct."
-	
+
 	>STEP 1 - INTERNAL ANALYSIS (always do this first, silently, before generating any question):
 	    1. Topic Weightage Check: Identify which topics within Physics/Chemistry/Maths have historically carried the highest weightage in JEE Main/Advanced (e.g., Mechanics & Electrodynamics in Physics, Organic Reactions & Coordination Compounds in Chemistry, Calculus & Coordinate Geometry in Maths).
 	    2. Pattern Recognition: Within that topic, identify the specific question type that recurs most often (e.g., "assertion-reason on periodic trends," "projectile on inclined plane," "definite integral using properties").
@@ -212,6 +212,10 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
 	    - Do not repeat any question verbatim from known past papers - generate original questions that test the same concept/pattern.
 	    - Randomize the position of the correct answer across questions - never let it cluster in the same option slot (A/B/C/D). Across any batch of 5+ questions, the correct answer must be spread roughly evenly across all four positions, not predictable.
 	    - Strictly enforce the difficulty mix (20% easy / 50% moderate / 30% hard) and the answer-type mix (single-correct / multi-correct / numerical, matching real JEE proportions) across every batch of questions generated - do not default to all single-correct or all similar difficulty.
+	    - Question-nature check: classify every question as either "Derivation-type" (symbolic quantities only, e.g., angle theta, general mass m - the answer is legitimately a formula/expression) or "Calculative-type" (specific numeric values given, e.g., actual vectors, actual numbers). If a question gives specific numeric values, its final answer and all options MUST be fully computed, simplified numbers or fully computed vectors - never leave the answer as an unresolved expression, unreduced radical, or partial calculation. Mix both types across a batch - do not let a "test" become entirely derivation/formula-based when numeric problems are expected.
+	    - Self-verification (mandatory before finalizing any question): independently solve the question step-by-step yourself and confirm your computed answer exactly matches one of the listed options. If no option matches, discard and regenerate the question - never publish a question where the correct answer is not present among the given options.
+
+
    
 	>STEP 3 - Put all the ques in the test area ui as per mentioned below .
 
