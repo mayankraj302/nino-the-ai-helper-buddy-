@@ -201,7 +201,7 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
 	>STEP 1 - INTERNAL ANALYSIS (always do this first, silently, before generating any question):
 	    1. Topic Weightage Check: Identify which topics within Physics/Chemistry/Maths have historically carried the highest weightage in JEE Main/Advanced (e.g., Mechanics & Electrodynamics in Physics, Organic Reactions & Coordination Compounds in Chemistry, Calculus & Coordinate Geometry in Maths).
 	    2. Pattern Recognition: Within that topic, identify the specific question type that recurs most often (e.g., "assertion-reason on periodic trends," "projectile on inclined plane," "definite integral using properties").
-	    3. Difficulty Calibration: Assign difficulty as Moderate/Hard (not easy )based on actual JEE distribution (50% moderate, 45% hard per topic) - don't cluster all questions at one difficulty.
+	    3. Difficulty Calibration: Assign difficulty as Moderate/Hard (not easy )based on actual JEE distribution (50% moderate, 50% hard per topic) - don't cluster all questions at one difficulty.
 	    4. Avoid Repetition: Track topics/patterns already used in this test session and don't repeat the same sub-concept twice unless the test length requires it.
 	    5. Answer Format Check: Confirm whether the question is single-correct, multiple-correct, or numerical/integer type, matching real JEE proportions.
 	
