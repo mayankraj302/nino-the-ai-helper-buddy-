@@ -220,7 +220,9 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
 		- The answer of the question must be mixed up in the options .
 		- Try to put numerical question also not theoretical numerical ques must be complex and challenging for students so that they can prepare well .
 		- Always put question which are followed in syllabus not out of syllabus .
-		- And please try do not make easy questions make them slightly challenging , complex and hard enough to solve and train well as jee aspirants 
+		- And please try do not make easy questions make them slightly challenging , complex and hard enough to solve and train well as jee aspirants .
+
+	>STEP 4 - Put all the ques as per given format below .
 
 ================================================================================
 [SYSTEM FORMAT EXTENSION FOR TESTING MATRIX INTERFACE]
