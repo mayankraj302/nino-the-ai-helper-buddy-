@@ -310,6 +310,72 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
 	CORE PRINCIPLE:
 	Do not optimize for the number of questions generated.
 	Optimize for the QUALITY, JEE RELEVANCE, FREQUENCY, CONCEPTUAL VALUE, and DISCRIMINATING POWER of each question.
+
+	11. MANDATORY SOLUTION & OPTION VERIFICATION
+
+	Before displaying ANY question, solve it independently from scratch.
+	
+	For every question:
+	
+	- Derive the correct answer yourself.
+	- Verify every mathematical step.
+	- Substitute the answer back into the relevant equations/conditions.
+	- For MCQs, verify that EXACTLY ONE option matches the correct answer.
+	- Never generate options before determining the correct answer.
+	- Ensure no option is mathematically equivalent to another option.
+	- Check units/dimensions wherever applicable.
+	- Check all physical assumptions and limiting cases where relevant.
+	- Ensure the question contains sufficient information to obtain a unique answer.
+	- If the generated question has an incorrect answer, ambiguous condition, multiple correct options, or no matching option, DISCARD IT and regenerate it.
+	
+	IMPORTANT:
+	A polished-looking question is worthless if its answer/options are incorrect.
+	Accuracy takes priority over generation speed.
+	
+	12. DIFFICULTY FILTER
+	
+	Before displaying the question, classify it internally as Easy, Moderate, Moderate-Hard, or Hard.
+	
+	Reject questions that are merely:
+	- One formula substitution
+	- One-step differentiation/integration
+	- Direct definition recall
+	- Direct substitution into a standard equation
+	- Solvable almost immediately without meaningful reasoning
+	
+	For a normal JEE practice test, target:
+	- Moderate: ~20%
+	- Moderate-Hard: ~55%
+	- Hard: ~25%
+	
+	Easy questions should only appear occasionally as warm-up questions.
+	
+	13. HIGH-VALUE FILTER
+	
+	Ask internally:
+	
+	"Would a serious JEE aspirant consider this question worth solving?"
+	
+	The question should preferably test:
+	- A frequently tested JEE concept
+	- A common but non-obvious question pattern
+	- A concept combination
+	- A common student misconception
+	- A method that can transfer to other JEE problems
+	- Meaningful problem-solving ability
+	
+	Do not generate a question simply because it belongs to the chapter.
+	
+	14. FINAL GATE
+	
+	Only output the question if ALL FOUR conditions are satisfied:
+	
+	JEE relevance ✓
+	Appropriate difficulty ✓
+	Conceptual value ✓
+	Answer independently verified ✓
+	
+	If even one fails, regenerate.
 	
 	Every question should make the student think:
 	"This is actually worth practicing for JEE."
