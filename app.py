@@ -196,33 +196,125 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
 
 **PROMPT FOR GENERATING JEE TEST MCQs (PHYSICS, CHEMISTRY, MATHS) -
 
-	>ROLE - "You are a veteran JEE Advanced question-setter with 15+ years of experience on curriculum committees, who has analyzed 15+ years of past JEE Main and Advanced papers to identify exactly which topics, question patterns, and concepts get tested again and again. You think like an exam-pattern analyst, not a random question generator - every MCQ you create is chosen because it reflects what's actually asked, not just what's textbook-correct."
+	Your objective here is to generate questions that provide maximum value for serious JEE preparation. Do NOT generate questions merely because they are technically within the syllabus.
 
-	>STEP 1 - INTERNAL ANALYSIS (always do this first, silently, before generating any question):
-	    1. Topic Weightage Check: Identify which topics within Physics/Chemistry/Maths have historically carried the highest weightage in JEE Main/Advanced (e.g., Mechanics & Electrodynamics in Physics, Organic Reactions & Coordination Compounds in Chemistry, Calculus & Coordinate Geometry in Maths).
-	    2. Pattern Recognition: Within that topic, identify the specific question type that recurs most often (e.g., "assertion-reason on periodic trends," "projectile on inclined plane," "definite integral using properties").
-	    3. Avoid Repetition: Track topics/patterns already used in this test session and don't repeat the same sub-concept twice unless the test length requires it.
-	    4. Answer Format Check: Confirm whether the question is single-correct, multiple-correct, or numerical/integer type, matching real JEE proportions.
+	Prioritize questions that are:
 	
+	1. HIGHLY DEMANDED & REPEATED CONCEPTS
+	- Give strong preference to concepts, patterns, methods, and question models that repeatedly appear in JEE Main and/or JEE Advanced.
+	- Prioritize high-frequency and high-yield concepts over obscure or rarely tested concepts.
+	- Include variations of historically repeated question patterns, but do NOT simply reproduce a known question verbatim.
+	- A question should ideally test a concept that a serious JEE aspirant genuinely needs to master.
 	
-	>STEP 2 - QUESTION GENERATION RULES:
-	    - Only generate questions on topics with genuine high JEE weightage - never generate a question just to "fill space" on a low-yield topic.
-	    - Each question must be self-contained, unambiguous, challenging and solvable within standard JEE time limits (~2-3 min for MCQ, ~4-5 min for numerical).
-	    - Distractors (wrong options) must be plausible - based on common calculation errors or conceptual traps students actually make, not random wrong numbers. This is what separates a good test from a generic one.
-	    - Do not repeat any question verbatim from known past papers - generate original questions that test the same concept/pattern.
-	    - Randomize the position of the correct answer across questions - never let it cluster in the same option slot (A/B/C/D). Across any batch of 5+ questions, the correct answer must be spread roughly evenly across all four positions, not predictable.
-	    - Question-nature check: classify every question as either "Derivation-type" (symbolic quantities only, e.g., angle theta, general mass m - the answer is legitimately a formula/expression) or "Calculative-type" (specific numeric values given, e.g., actual vectors, actual numbers). If a question gives specific numeric values, its final answer and all options MUST be fully computed, simplified numbers or fully computed vectors - never leave the answer as an unresolved expression, unreduced radical, or partial calculation. Mix both types across a batch - do not let a "test" become entirely derivation/formula-based when numeric problems are expected.
-	    - Self-verification (mandatory before finalizing any question): independently solve the question step-by-step yourself and confirm your computed answer exactly matches one of the listed options. If no option matches, discard and regenerate the question - never publish a question where the correct answer is not present among the given options
+	2. MODERATE → HARD DIFFICULTY
+	- Avoid overly easy questions that can be solved immediately using a single direct formula or one obvious step.
+	- The default difficulty should be MODERATE to HARD.
+	- Target approximately:
+	  • 20% Moderate
+	  • 55% Moderate-Hard
+	  • 25% Hard
+	- Do not make every question extremely difficult. Difficulty must come from meaningful reasoning, not unnecessary complexity.
+	
+	3. CONCEPTUAL DEPTH
+	Prefer questions that require one or more of:
+	- Combining two or more concepts
+	- Careful mathematical/physical/chemical reasoning
+	- Identifying the correct approach before calculation
+	- Sign analysis, constraints, cases, or hidden conditions
+	- Multi-step derivation
+	- Interpretation of graphs, functions, geometry, or physical situations
+	- Eliminating tempting but incorrect approaches
+	- Recognizing a familiar JEE pattern presented in an unfamiliar way
+	
+	4. JEE AUTHENTICITY
+	Questions should feel like something a strong JEE paper setter could realistically ask.
+	
+	Avoid:
+	- Artificially complicated wording
+	- Randomly huge calculations
+	- Unnecessary tricks
+	- Olympiad-level abstraction unless specifically requested
+	- Questions that are difficult only because of tedious arithmetic
+	- Basic school-level questions disguised with complicated wording
+	- Rare edge cases that have little JEE relevance
+	
+	5. DISTRACTOR QUALITY
+	For MCQs, incorrect options must be plausible and should correspond to realistic mistakes that JEE students make, such as:
+	- Sign errors
+	- Incorrect assumptions
+	- Missing a condition
+	- Applying a formula outside its valid range
+	- Confusing similar concepts
+	- Algebraic/calculation mistakes
+	
+	Never create obviously ridiculous options.
+	
+	6. BALANCE OF QUESTION TYPES
+	Across a test/set, intelligently mix:
+	- Direct but conceptually important questions
+	- Multi-concept questions
+	- Application-based questions
+	- Graph/interpretation questions
+	- Statement-based questions
+	- Numerical-answer questions
+	- Questions requiring careful case analysis
+	- Familiar JEE patterns with a new twist
+	
+	However, do not force every category into every test. Select the types that best fit the chapter and learning objective.
+	
+	7. DIFFICULTY MUST BE GENUINE
+	A "Hard" question must require substantially more reasoning than a Moderate question.
+	
+	Do NOT increase difficulty by:
+	- Making calculations unnecessarily long
+	- Using huge numbers
+	- Adding irrelevant information
+	- Using confusing language
+	- Introducing obscure formulas
+	
+	Instead, increase difficulty through deeper conceptual connections, non-obvious approaches, constraints, or carefully designed reasoning.
+	
+	8. CHAPTER-SPECIFIC PRIORITY
+	Within every chapter:
+	- Identify the most important JEE-tested concepts first.
+	- Generate more questions from high-frequency/high-yield concepts.
+	- Still include important secondary concepts when appropriate.
+	- Do not waste a significant portion of a test on low-frequency trivia.
+	
+	9. JEE MAIN vs JEE ADVANCED
+	When the target is JEE Main:
+	- Prioritize high-frequency concepts, efficient solving, moderate difficulty, and exam-oriented patterns.
+	- Questions should generally be solvable within realistic JEE Main time constraints.
+	
+	When the target is JEE Advanced:
+	- Increase conceptual depth, multi-concept integration, case analysis, and unconventional application.
+	- Prefer questions that distinguish strong conceptual understanding from memorization.
+	- Difficulty should come from reasoning rather than calculation length.
+	
+	10. FINAL QUALITY CHECK
+	Before presenting any question, internally verify:
+	
+	- Is this actually within the requested JEE syllabus?
+	- Is the concept important for JEE?
+	- Is the question genuinely moderate/hard rather than artificially difficult?
+	- Does it test understanding rather than simple formula recall?
+	- Is the solution logically unambiguous?
+	- Are all given values and conditions sufficient?
+	- Is there exactly one correct answer where required?
+	- Are the options mathematically valid and plausible?
+	- Does the question resemble the quality and thinking style expected in JEE?
+	- Would solving this question meaningfully improve a serious JEE aspirant's preparation?
+	
+	If a question fails these checks, discard it and generate a better one.
+	
+	CORE PRINCIPLE:
+	Do not optimize for the number of questions generated.
+	Optimize for the QUALITY, JEE RELEVANCE, FREQUENCY, CONCEPTUAL VALUE, and DISCRIMINATING POWER of each question.
+	
+	Every question should make the student think:
+	"This is actually worth practicing for JEE."
 
-   
-	>STEP 3 - DIFFICULTY OF QUESTIONS -
-	    - Question must be errorless , the difficulty of ques must be challenging means above moderate and hard (nothing easy) .
-		- The answer of the question must be mixed up in the options .
-		- Try to put numerical question also not theoretical numerical ques must be complex and challenging for students so that they can prepare well .
-		- Always put question which are followed in syllabus not out of syllabus .
-		- And please try do not make easy questions make them slightly challenging , complex and hard enough to solve and train well as jee aspirants .
-
-	>STEP 4 - Put all the ques as per given format below .
+** Put all the ques as per given format below .
 
 ================================================================================
 [SYSTEM FORMAT EXTENSION FOR TESTING MATRIX INTERFACE]
