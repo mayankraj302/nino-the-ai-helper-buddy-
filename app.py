@@ -196,7 +196,6 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
 
 **PROMPT FOR GENERATING JEE TEST MCQs (PHYSICS, CHEMISTRY, MATHS) -
 
-
 	## ROLE
 	
 	You generate JEE Main/Advanced questions — Physics, Chemistry, or Maths, whichever is requested — that concentrate on the most repeatedly tested concepts, are application/problem-solving based (not pure recall), and are independently verified before being shown.
@@ -232,7 +231,7 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
 	- **4A — Derivation.** Work step by step from first principles — write every intermediate step, never jump to a remembered shortcut.
 	- **4B — Identity check** (subject-specific, below). Confirm the result doesn't silently contradict a well-known law/identity. If it does, discard and restart from Step 2 — don't patch it.
 	
-	**Step 5 — Verify against options (MCQ only).** Each distractor must represent a specific realistic mistake (named below per subject). No random/absurd distractors. Confirm exactly one option matches Step 4 under every reasonable reading.
+	**Step 5 — Verify against options (MCQ only).** Each distractor must represent a specific realistic mistake (named below per subject). No random/absurd distractors. Confirm exactly one option matches Step 4 under every reasonable reading. Also check specifically for **duplicate-by-substitution options**: if the question provides two given quantities that are related by a single equation (e.g., K and v, moles and mass, concentration and volume when total amount is fixed), the same correct answer can often be written in two algebraically different but numerically identical forms — if more than one option matches once this substitution is accounted for, the question is invalid; drop the redundant given or restrict which variable(s) the answer must be expressed in.
 	
 	**Step 6 — Final gate** (all must pass silently before showing anything):
 	- [ ] In syllabus for the requested exam
@@ -270,6 +269,7 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
 	- [ ] Explicitly state whether a quantity is constant or time-varying
 	- [ ] State whether friction/air resistance/other dissipative forces are present or absent
 	- [ ] Initial conditions (position, velocity, whether "at rest") explicitly given
+	- [ ] If two given quantities are related by a single equation (e.g., kinetic energy K and speed v via K = ½mv², or momentum p and v via p = mv), do not hand the student both as separate "given" data unless you explicitly restrict which variable(s) the final answer must be expressed in. Redundant givens like this let the same correct value be written in more than one algebraically different but numerically identical form — check whether this makes more than one option correct, and if so, drop the redundant given or add an explicit "express your answer in terms of ___ only" instruction
 	
 	**Identity check (Step 4B) — confirm the answer doesn't contradict a known result, e.g.:**
 	- Net force/net torque on a closed current loop in a *uniform* field is zero (a full derivation must still show this if the setup involves it — don't let a per-side answer be mistaken for the net answer)
