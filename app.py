@@ -239,8 +239,9 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
 	- [ ] Not a verbatim/near-verbatim copy; no unverified PYQ-year claim
 	- [ ] Subject ambiguity checklist fully addressed
 	- [ ] Step 4A derivation fully written out, Step 4B identity-check passed
-	- [ ] Exactly one correct option/value, realistic distractors
+	- [ ] Exactly one correct option/value, realistic distractors, no duplicate-by-substitution options
 	- [ ] Solvable in realistic exam time (~2–4 min Main, ~4–7 min Advanced)
+	- [ ] **Anti-triviality self-test (run this explicitly, don't skip it):** "Could a student who has simply memorized the relevant formula/definition answer this within about 5 seconds, by substituting the given values directly with no setup, no interpretation, and no decision about which method/concept applies?" If YES, this question is too trivial — discard it and rebuild by: putting the familiar formula in an unfamiliar setup, adding a hidden-but-legitimate constraint, requiring a choice between two plausible methods, or combining it with a second interacting concept. The only exception is a question explicitly requested as a warm-up on an extremely important foundational concept — and even then, only one such question per set.
 	
 	If anything fails, discard and regenerate silently.
 	
@@ -304,29 +305,29 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
 	- Thermodynamic signs (ΔH, ΔS, ΔG) are mutually consistent (ΔG = ΔH − TΔS)
 	
 	**Distractor types:** sign error, wrong stoichiometric ratio, forgetting a spectator ion, confusing molarity with molality, trend applied in the wrong direction, wrong number of equivalents, wrong isomer/stereochemistry assignment.
-	
-	---
-	
-	# SUBJECT MODULE — MATHS
-	
-	**Ambiguity checklist (Step 3):**
-	- [ ] Domain restriction of the function/variable explicitly stated (real vs. integer vs. positive, etc.)
-	- [ ] Principal value branch specified for inverse trig/multi-valued functions
-	- [ ] Real vs. complex roots specified
-	- [ ] Open vs. closed intervals stated explicitly
-	- [ ] Base of logarithm specified if ambiguous (natural log vs. log₁₀)
-	- [ ] For combinatorics/probability: whether order matters, whether repetition is allowed, whether outcomes are equally likely — all stated
-	- [ ] For matrices/vectors: dimensions and any non-degeneracy conditions (e.g., non-zero vector, invertible matrix) stated
-	
-	**Identity check (Step 4B):**
-	- Every solution is substituted back into the *original* equation (not just the transformed one) to catch extraneous roots introduced by squaring, taking logs, or multiplying by an expression that could be zero/negative
-	- Boundary values and discontinuities of the function are checked
-	- Where feasible, cross-validate the result via a second method (e.g., algebraic vs. calculus-based) to catch a one-off arithmetic slip
-	- Critical points and sign of derivative checked for monotonicity/optimization claims
-	- For probability: confirm probabilities sum to 1 across the sample space
-	- For combinatorics: explicitly check for over- or under-counting (identical items, indistinguishable arrangements, order-dependence)
-	
-	**Distractor types:** sign error, extraneous root not excluded, off-by-one in counting, wrong branch of inverse function, forgetting a boundary/edge case, confusing permutation with combination, arithmetic slip in an otherwise correct method.
+
+---
+
+# SUBJECT MODULE — MATHS
+
+**Ambiguity checklist (Step 3):**
+- [ ] Domain restriction of the function/variable explicitly stated (real vs. integer vs. positive, etc.)
+- [ ] Principal value branch specified for inverse trig/multi-valued functions
+- [ ] Real vs. complex roots specified
+- [ ] Open vs. closed intervals stated explicitly
+- [ ] Base of logarithm specified if ambiguous (natural log vs. log₁₀)
+- [ ] For combinatorics/probability: whether order matters, whether repetition is allowed, whether outcomes are equally likely — all stated
+- [ ] For matrices/vectors: dimensions and any non-degeneracy conditions (e.g., non-zero vector, invertible matrix) stated
+
+**Identity check (Step 4B):**
+- Every solution is substituted back into the *original* equation (not just the transformed one) to catch extraneous roots introduced by squaring, taking logs, or multiplying by an expression that could be zero/negative
+- Boundary values and discontinuities of the function are checked
+- Where feasible, cross-validate the result via a second method (e.g., algebraic vs. calculus-based) to catch a one-off arithmetic slip
+- Critical points and sign of derivative checked for monotonicity/optimization claims
+- For probability: confirm probabilities sum to 1 across the sample space
+- For combinatorics: explicitly check for over- or under-counting (identical items, indistinguishable arrangements, order-dependence)
+
+**Distractor types:** sign error, extraneous root not excluded, off-by-one in counting, wrong branch of inverse function, forgetting a boundary/edge case, confusing permutation with combination, arithmetic slip in an otherwise correct method.
 
 ** Put all the ques as per given format below .
 
