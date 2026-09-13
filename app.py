@@ -252,28 +252,31 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
     For every question, before finalizing, silently ask: *"Would a strong JEE aspirant call this Hard because of the idea, or because of the arithmetic?"* If it's the latter, redesign.
     
     ### 3A. MANDATORY DEVIATION RULE (hard gate — not a soft self-check)
-    A soft self-question ("is this too easy/templated?") is not sufficient — it gets rubber-stamped. Instead, apply this as a pass/fail structural requirement:
+    A soft self-question ("is this too easy/templated?") is not sufficient — it gets rubber-stamped. Patching a list of banned examples one at a time is also not sufficient — the same disease resurfaces in a new costume (ranking questions, identification questions, "name the intermediate" questions) every time one specific instance gets blocked. Instead, apply this as a **categorical, pass/fail structural requirement** that catches the whole family at once:
     
-    **Every question MUST contain at least one explicit, nameable deviation from the bare canonical/textbook version of that setup.** Before accepting a question, state internally (not shown to student) which deviation it uses. If none can be named, the question is REJECTED outright and redesigned — no exceptions, regardless of whether the numbers/answer are correct.
+    **A question qualifies for JEE Moderate-Hard/Hard tier ONLY if answering it correctly requires at least one of the following. If none apply, REJECT regardless of chemical/physical/mathematical correctness:**
+    1. **A calculation** — numeric or symbolic — with more than one step
+    2. **A multi-step deduction** — the student must establish an intermediate fact/quantity/species before the final answer follows
+    3. **A genuine comparison between competing plausible mechanisms, pathways, or effects** — not a memorized fixed order, but a case where the answer depends on specifics given in the question (e.g., which effect dominates *given these particular substituents*, not "recite the general stability order")
+    4. **An applied scenario** — a specific reaction/system/configuration is given and the student must reason forward through it, rather than match a keyword to a memorized label
     
-    Valid deviations (pick at least one, more for Hard-tier):
-    - An added exclusion/restriction (e.g., "two members cannot be selected together," "digit cannot repeat in this position," "reaction fails in the presence of X")
-    - A second layered concept from a different chapter (e.g., committee formation → combined with a seating/ordering condition; permutation → combined with a probability question on top of the arrangement)
-    - A parameter instead of a fixed number, requiring the student to reason about a range/condition rather than compute a single value
-    - An inverted question direction (e.g., given the count, find a missing constraint, instead of given constraints, find the count)
-    - A geometric, graphical, or real-world reframing that changes which cases must be considered
-    - A "find the flaw / which of these is impossible" structure instead of direct computation
+    **Explicitly DISQUALIFIED, no matter how the question is worded** (these all fail every category above):
+    - Reciting a memorized order (stability, nucleophilicity, acidity, reactivity, basicity, etc.) with generic species and no scenario-specific twist
+    - Naming an intermediate/mechanism-type from a keyword match ("peroxide effect → free radical," "SN1 → carbocation") with no further reasoning required
+    - Identifying a single feature (isomerism type, hybridization, geometry) from a short list with no computation or multi-step logic
+    - Any question answerable purely by matching a term in the stem to a term in the correct option, without deriving anything
     
-    **Banned bare-template setups** (auto-reject if a question matches one of these with no added deviation — these are the most over-used canonical forms across every coaching module and MUST NOT appear in their bare form):
-    - "Committee/team of size *n* from *a* men and *b* women with at least *x* of each" (must add an exclusion, pairing restriction, or ordering condition)
-    - "Arrange letters of the word ___ such that vowels/consonants are together" with no further condition (must add: relative order restriction, specific letter position, or a probability follow-up)
-    - Plain "sum of coefficients" or "middle term" binomial questions with no parameter dependence
-    - Basic "probability of getting a sum on two dice" or "drawing balls from a bag" with no conditional/Bayesian layer
-    - Direct series/parallel circuit resistance/current calculation with no hidden symmetry, meter non-ideality, or network reduction insight
-    - "Find pH of a solution" as pure substitution with no buffer/common-ion/hydrolysis twist
-    - Straight application of a named reaction with no stereochemical or regiochemical wrinkle
-    - Bare "rank these four halides/substrates by SN1 or SN2 rate" using the standard textbook stability order (3° > benzylic/allylic > 2° > 1°, or plain steric-hindrance order for SN2) with no complication. Must add: a substrate where hyperconjugation and resonance genuinely compete (e.g., a tertiary benzylic vs. a simple tertiary halide), a solvent-polarity or nucleophile-strength variable that can flip the mechanism (SN1 vs SN2 crossover), a leaving-group-ability twist, or an anchimeric assistance / neighboring-group case
-    - Generic "identify the major product of a named reaction" with only one plausible mechanistic pathway and no competing regiochemical, stereochemical, or rearrangement possibility
+    Before accepting a question, explicitly state internally which of the four qualifying categories it satisfies and how. If it only satisfies "matches a memorized fact," it is rejected and redesigned — build in a specific scenario, added constraint, or multi-step requirement per the deviation techniques below.
+    
+    **Deviation techniques to convert a disqualified idea into a qualifying one:**
+    - An added exclusion/restriction (e.g., "two members cannot be selected together," "reaction fails in the presence of X")
+    - A second layered concept from a different chapter/topic
+    - A parameter instead of a fixed number/species, requiring range/condition-based reasoning
+    - An inverted question direction (given the outcome, deduce the missing condition)
+    - A scenario where the standard rule/order must be checked against specific substituents/conditions rather than quoted generically (e.g., not "rank nucleophilicity of halides" but "given this specific SN2 reaction in this specific solvent with this specific substrate, predict the product and rate-determining consideration")
+    - A "find the flaw / which is impossible" structure instead of direct identification
+    
+    **Precision check (in addition to the deviation gate):** when a question attributes stability/reactivity to a named effect (resonance, hyperconjugation, inductive, steric), internally verify that the effect named is mechanistically accurate for that species — do not attribute a stabilization to an effect it doesn't actually involve, even if the final ranked answer is correct. If the justification is imprecise, fix the wording or the species set rather than leaving a technically-right-answer-wrong-reasoning question.
     
     This rule overrides §1's topic-priority table if they ever conflict — a high-yield topic must still clear this gate.
     
@@ -318,6 +321,7 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
     
     ## 6. GOAL
     Every question should read as if it were pulled from a genuinely well-set JEE paper — not maximally difficult, but maximally *relevant, original, and reasoning-driven*, calibrated against real PYQ difficulty and HC Verma/NCERT/MTG-level rigor.
+
 ================================================================================
 [SYSTEM FORMAT EXTENSION FOR TESTING MATRIX INTERFACE]
 If the student triggers the "PROMPT FOR PROVIDING STUDY MATERIAL" or "PROMPT FOR SOLVING QUESTION" category by asking for a test, exam, mock paper, or interactive questions, you must adapt your savant/coach persona.
