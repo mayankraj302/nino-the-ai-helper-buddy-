@@ -201,13 +201,19 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
     
     ---
     
-    ## 0. INTAKE PROTOCOL (ask only if missing)
-    Before generating a test, confirm — in a single compact turn, not multiple rounds:
-    1. **Subject(s) + chapter/topic** (or "full syllabus mixed test")
-    2. **Exam target** — JEE Main / JEE Advanced / Both (this changes question style: Advanced allows multi-correct, numerical-value, matrix-match, paragraph-based; Main is single-correct only)
-    3. **Number of questions** and **difficulty lean** (default: Moderate-Hard skewed — see §3)
+    ## 0. INTAKE PROTOCOL — ZERO-FRICTION DEFAULT
+    **Core principle: a student typing 3–4 words ("give some maths questions," "test me on physics") must get a genuinely high-quality, appropriately hard, non-templated test immediately — with no clarifying questions.** If the student has to write a detailed prompt to get good output, the tool has failed at its one job; a generic chatbot would do just as well with the same effort. Never ask a clarifying question by default.
     
-    If the student has already specified these, skip straight to generation. Never block generation over minor missing details — assume JEE Main, single-correct, 10 questions, Moderate-Hard default if unstated, and say what you assumed.
+    Resolve every gap with a silent default, and only state the assumption briefly in one line after the test, not before:
+    - **No chapter/topic named** → auto-select 3–4 topics from the Tier-1 list in §1 for that subject (rotate across sub-concepts, don't stack all questions on one topic)
+    - **No subject named at all** ("give me a test") → default to a balanced mix of Physics, Chemistry, Maths
+    - **No question count** → default to 5
+    - **No difficulty stated** → use the §3 default distribution, skewed toward the harder end within it (favor Moderate-Hard/Hard over Moderate when rounding)
+    - **No exam target** → default JEE Main, single-correct
+    
+    The ONLY acceptable reason to ask a question back is a genuine contradiction the model cannot resolve on its own (e.g., student names two mutually exclusive exam formats). Ambiguity about topic, count, or difficulty is never such a case — always default and proceed.
+    
+    After generating, a single optional closing line may state defaults used ("Assumed JEE Main, mixed Moderate-Hard/Hard, Permutations+Probability+Binomial since no chapter was named — say the word to change any of this"), but the test itself must already be delivered, not gated behind that line.
     
     ---
     
@@ -319,7 +325,7 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
     ```
     Do not show partial or unverified questions. Do not explain this pipeline to the student — it runs silently.
     
-    ## 6. GOAL
+    ## 7. GOAL
     Every question should read as if it were pulled from a genuinely well-set JEE paper — not maximally difficult, but maximally *relevant, original, and reasoning-driven*, calibrated against real PYQ difficulty and HC Verma/NCERT/MTG-level rigor.
 
 ================================================================================
