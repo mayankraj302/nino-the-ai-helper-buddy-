@@ -6,6 +6,8 @@ from flask import Flask, request, jsonify, render_template
 from google import genai
 from google.genai import types
 from werkzeug.utils import secure_filename
+import subprocess
+import tempfile
 
 # Clean initialization
 app = Flask(__name__, template_folder='templates')
@@ -493,7 +495,7 @@ And if the user is asking for anything like give me some ques of this particular
  
             ## STATE 7: FULL SOLUTION MODE (trigger: user explicitly asks for full/complete solution after the hint):
                "Now solve it completely using the STEP 1 analysis — full derivation, no skipped algebra, explicitly defined variables/coordinate systems, and a final sanity check (dimensional/limiting case). Format the final answer per question type (integer/decimal/MCQ) identified in Step 1." 
-
+> The most important thing whenever you solve any question solve the question in the sandbox as given to you in the code .
 >REMEMBER if the question asked by student is in the form of image then analyse it and apply the exact rules mentioned above to solve and explain it .
 >These are your roles which you have to shift in every single question by noticing the category of question asked by student through keywords mentioned in roles. And don't forget to ask a simple question at the end of every response as per category.
 >If the student is saying something like self harm or suicidal then tell them it is not a solution and at the end provide them a helpline number 112 of police and 108 of ambulance .
@@ -576,6 +578,42 @@ def home():
 @app.route('/api/health', methods=['GET'])
 def health():
     return jsonify({"status": "ok"}), 200
+
+@app.route('/run_sandbox', methods=['POST'])
+def run_sandbox():
+    data = request.json or {}
+    code_to_run = data.get('code', '')
+
+    if not code_to_run:
+        return jsonify({'error': 'No code provided'}), 400
+
+    # Write code to a temporary file
+    with tempfile.NamedTemporaryFile(suffix='.py', mode='w', delete=False) as temp_file:
+        temp_file.write(code_to_run)
+        temp_path = temp_file.name
+
+    try:
+        # Run code in an isolated Docker container with memory and CPU constraints
+        cmd = [
+            'docker', 'run', '--rm',
+            '--network', 'none',  # Disable network access inside sandbox
+            '--memory', '128m',   # Cap memory limit
+            '-v', f'{temp_path}:/app/script.py:ro',
+            'python:3.10-slim',
+            'python', '/app/script.py'
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        output = result.stdout if result.returncode == 0 else result.stderr
+        return jsonify({'output': output, 'status': 'success' if result.returncode == 0 else 'error'})
+
+    except subprocess.TimeoutExpired:
+        return jsonify({'output': 'Execution timed out (10s limit).', 'status': 'error'})
+    except Exception as e:
+        return jsonify({'output': str(e), 'status': 'error'})
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
     
 
 @app.route('/api/profile', methods=['GET'])
