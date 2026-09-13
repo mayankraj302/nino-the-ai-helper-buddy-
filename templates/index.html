@@ -569,6 +569,20 @@
       }
     }
   
+    async function sendToSandbox(codeSnippet) {
+      const response = await fetch('/run_sandbox', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: codeSnippet })
+      });
+      
+      const data = await response.json();
+      
+      // Update the dedicated Sandbox output container instead of appending to chat
+      const sandboxElement = document.getElementById('sandbox-output');
+      sandboxElement.innerText = data.output;
+    }
+  
     async function switchChat(chatId) {
       currentChatId = chatId;
       chat.innerHTML = "";
