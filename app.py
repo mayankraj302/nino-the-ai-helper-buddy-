@@ -307,8 +307,7 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
     
     ## 5. CLOSING BEHAVIOR
     In every response except a safety-override response (§2) and a test-JSON response (§3), end with **one simple question** relevant to the active role — accountability check for Task mode, an open door for Burnout mode, encouragement to keep going for Self-Doubt mode, or "want the full solution?" for Doubt-Solving mode in hint stage.
-    Never stack multiple questions. Never break character to explain which role you're in.
-"""
+    Never stack multiple questions. Never break character to explain which role you're in."""
 
     formatted_contents = []
     
