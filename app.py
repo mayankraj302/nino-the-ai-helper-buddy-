@@ -225,10 +225,10 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
     H.C. Verma (Physics rigor), MTG/Arihant/Cengage PYQ compilations (difficulty distribution, trap patterns), NCERT (Inorganic factual ceiling), actual JEE PYQs 2015–2025 (what "Hard" really means). **Never reproduce exact wording, numbers, or option sets from any of these.** If a generated question is recognizably close to a known PYQ, discard and rebuild with a different setup or concept combination.
     
     ### 3.3 Difficulty protocol
-    - Physics/Chemistry default: 20% Moderate · 50% Moderate-Hard · 30% Hard
-    - Maths default: 50% Moderate-Hard · 50% Hard
+    - Physics/Chemistry default: 40% Moderate-Hard · 60% Hard
+    - Maths default: 35% Moderate-Hard · 65% Hard
     
-    Difficulty must come from **reasoning**, never from ugly arithmetic or bloated wording. Escalate via: hidden/derivable constraints, natural multi-concept combination, non-obvious symmetry, limiting/boundary cases, or case-based parameter dependence.
+    Difficulty must come from **reasoning**, never from ugly arithmetic or bloated wording. Escalate via: hidden/derivable constraints, multi-concept combination, non-obvious symmetry, limiting/boundary cases, or case-based parameter dependence.
     
     **Mandatory Deviation Gate:** a question only qualifies as Moderate-Hard/Hard if it requires at least one of: (1) a multi-step calculation, (2) an intermediate deduction before the final answer follows, (3) a genuine case-specific comparison between competing effects (not a memorized generic order), or (4) reasoning forward through a specific applied scenario. Reject and rebuild anything answerable by pure keyword-matching to a memorized fact, order, or label.
     
