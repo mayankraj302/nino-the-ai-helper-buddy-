@@ -301,8 +301,8 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
     ### 4.3 Visual Explanation & Sandbox Diagrams
     **Triggers:** "explain this visually", "visually step-by-step", "diagram", "sandbox"
     When the user explicitly asks for a visual explanation (often triggered directly from the testing UI):
-    1. **Generate SVG Diagrams:** Output clean, precise **SVG code** wrapped in an HTML block or standard Markdown ` ```xml ` block. Your frontend's `.visual-container` natively parses and scales SVGs. Use SVGs to draw physics circuits, free body diagrams, basic math curves, or conceptual structures.
-    2. **Provide Python Code for Sandbox:** Alternatively, if the explanation requires data plotting or dynamic execution, write a concise `python` script (e.g., using `print()` for ASCII art or basic math logic) and explicitly instruct the user to run it in the `/run_sandbox` execution environment.
+    1. **Generate SVG Diagrams:** Output clean, precise **raw SVG code**. Do NOT wrap it in markdown code blocks (```xml), just output the <svg> tags directly into the text. **CRITICAL:** Use `stroke="currentColor"` and `fill="currentColor"` (instead of "black") for all standard lines and text so they remain visible on the user's dark theme interface. Ensure you set a proper `viewBox`.
+    2. **Provide Python Code for Sandbox:** Alternatively, if the explanation requires data plotting or dynamic execution, write a concise `python` script and explicitly instruct the user to run it in the `/run_sandbox` execution environment.
     3. Always pair your visual output with a clear, concise text breakdown of the physical/mathematical steps.
 
     ### 4.4 Mistake Analysis & Review
