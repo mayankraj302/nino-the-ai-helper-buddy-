@@ -27,7 +27,10 @@
               accent: '#4F46E5',
               testBg: '#0B0B0F',
               testCard: '#12131A',
-              emerald: '#10B981'
+              emerald: '#10B981',
+              mistake: '#EF4444',
+              concept: '#3B82F6',
+              silly: '#A855F7'
             }
           },
           fontFamily: {
@@ -103,6 +106,15 @@
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
     
+    /* Diagram & Visual Support for AI responses and sandbox */
+    .prose img, .visual-container img { 
+      max-width: 100%; 
+      height: auto; 
+      border-radius: 12px; 
+      margin: 16px 0; 
+      border: 1px solid rgba(255,255,255,0.1);
+      background-color: #0B0B0F;
+    }
     .prose strong { color: #FFFFFF !important; font-weight: 700; }
     .prose p { margin-bottom: 8px; font-weight: 400; color: #FFFFFF; line-height: 1.5; }
     .prose p:last-child { margin-bottom: 0; }
@@ -120,7 +132,6 @@
     @keyframes textSlideRight { 0% { width: 0; opacity: 0; } 100% { width: 160px; opacity: 1; } }
     @keyframes fadeOutSplash { 0% { opacity: 1; visibility: visible; } 100% { opacity: 0; visibility: hidden; } }
     
-    /* New gradient animation for the Welcome Screen */
     @keyframes gradient-x {
       0%, 100% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
@@ -240,7 +251,6 @@
           </div>
         </div>
 
-        <!-- NEW BIG WELCOME SCREEN -->
         <div id="welcome-screen" class="flex-1 flex flex-col items-center justify-center w-full max-w-4xl mx-auto p-4 transition-all duration-500">
           <div class="text-center space-y-3 opacity-0 animate-[logoReveal_0.6s_ease-out_forwards] delay-100">
             <h1 class="text-5xl md:text-6xl font-bold tracking-tight mb-4">
@@ -288,7 +298,7 @@
 
       <div id="split-slider" class="split-resizer hidden"></div>
 
-      <!-- TEST SECTION WITH UPDATED RESPONSIVE SLIDE-OVER CLASSES -->
+      <!-- TEST SECTION / INTERACTIVE SANDBOX -->
       <div id="test-section" class="h-full bg-brand-testBg md:border-l border-white/5 flex flex-col absolute md:relative inset-0 md:inset-auto z-[60] md:z-auto w-full md:w-[0%] transform translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out overflow-hidden shadow-2xl md:shadow-none hidden"> 
         <div id="test-configurator-screen" class="absolute inset-0 bg-brand-testBg z-50 flex flex-col items-center justify-center p-6 space-y-6">
           <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-lg">
@@ -324,13 +334,12 @@
 
         <div class="h-12 border-b border-white/5 px-4 flex items-center justify-between shrink-0 bg-brand-testCard">
           <div class="flex items-center gap-3">
-            <span class="text-xs font-bold text-white tracking-tight">Interactive Sandbox</span>
+            <span class="text-xs font-bold text-white tracking-tight" id="sandbox-title">Interactive Sandbox</span>
             <div class="bg-red-500/10 border border-red-500/20 rounded px-2 py-0.5 flex items-center gap-1.5 font-mono text-[11px] text-red-400 font-bold shadow-sm" id="test-timer-wrapper">
               <i class="fas fa-clock text-[10px] animate-pulse"></i>
               <span id="test-countdown-clock">00:00</span>
             </div>
           </div>
-          <!-- ADDED CHAT BUTTON HERE FOR MOBILE MINIMIZATION -->
           <div class="flex items-center gap-2">
             <button onclick="toggleMobileTestView()" class="md:hidden text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-md transition active:scale-95">
               <i class="fas fa-message"></i> Chat
@@ -342,11 +351,11 @@
           </div>
         </div>
 
-        <div id="test-viewport" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 no-scrollbar"></div>
+        <div id="test-viewport" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 no-scrollbar visual-container"></div>
 
-        <div class="p-4 border-t border-white/5 bg-brand-testCard flex gap-3 items-center justify-between shrink-0">
+        <div class="p-4 border-t border-white/5 bg-brand-testCard flex gap-3 items-center justify-between shrink-0" id="test-footer-actions">
           <div>
-            <span class="text-[9px] text-gray-500 block uppercase tracking-wider font-semibold">Testing Progress</span>
+            <span class="text-[9px] text-gray-500 block uppercase tracking-wider font-semibold" id="test-counter-label">Testing Progress</span>
             <span id="test-counter" class="text-xs text-slate-300 font-mono">0 / 0 Solved</span>
           </div>
           <button onclick="evaluateExamSubmission()" id="submit-exam-btn" class="px-5 py-2.5 bg-brand-emerald hover:bg-emerald-600 text-white rounded-xl text-xs font-semibold shadow-lg active:scale-95 transition flex items-center gap-2">
@@ -428,6 +437,7 @@
     let userData = {};
     let selectedFileObject = null;
     let examinationActive = false;
+    let isReviewMode = false;
     let verificationQuestions = [];
     let currentTopicContext = "General Practice Framework";
     let examCountdownInterval = null;
@@ -526,7 +536,6 @@
         btn.className = `history-item w-full text-left flex items-center justify-between text-[13px] rounded-lg px-3 py-2.5 transition group relative ${isActive ? 'bg-white/10 text-white font-medium' : 'text-gray-300 hover:bg-white/5 hover:text-white'} ${isNew ? 'animate-new-chat' : ''}`;
         btn.onclick = () => switchChat(session.id);
         
-        // Added the delete action icon here
         btn.innerHTML = `
           <div class="truncate pr-4 flex-1 flex items-center gap-3">
             <i class="fas fa-message text-[11px] ${isActive ? 'text-indigo-400' : 'text-gray-500'}"></i>
@@ -540,47 +549,21 @@
       });
     }
 
-    // Add this new function anywhere inside your <script> tag
     async function deleteChat(chatId, event) {
-      event.stopPropagation(); // Prevents the chat from opening when clicking delete
-      
+      event.stopPropagation(); 
       if (!confirm("Are you sure you want to delete this chat?")) return;
 
-      // Remove from local storage
       chatSessions = chatSessions.filter(c => c.id !== chatId);
       localStorage.setItem('helper_buddy_chats', JSON.stringify(chatSessions));
 
-      // Tell backend to delete
-      try {
-        await fetch(`/api/chat/${chatId}`, { method: 'DELETE' });
-      } catch (error) {
-        console.error("Failed to delete on server", error);
-      }
+      try { await fetch(`/api/chat/${chatId}`, { method: 'DELETE' }); } catch (error) {}
 
-      // Handle UI refresh
       if (currentChatId === chatId) {
-        if (chatSessions.length > 0) {
-          switchChat(chatSessions[0].id);
-        } else {
-          startNewChat();
-        }
+        if (chatSessions.length > 0) switchChat(chatSessions[0].id);
+        else startNewChat();
       } else {
         renderSidebarList();
       }
-    }
-  
-    async function sendToSandbox(codeSnippet) {
-      const response = await fetch('/run_sandbox', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: codeSnippet })
-      });
-      
-      const data = await response.json();
-      
-      // Update the dedicated Sandbox output container instead of appending to chat
-      const sandboxElement = document.getElementById('sandbox-output');
-      sandboxElement.innerText = data.output;
     }
   
     async function switchChat(chatId) {
@@ -598,24 +581,20 @@
         const data = await res.json();
         
         if (data.history && data.history.length > 0) {
-          // Hide welcome screen, reveal chat
           document.getElementById('welcome-screen').classList.add('hidden');
           document.getElementById('chat-window').classList.remove('hidden');
 
           data.history.forEach(msg => {
             const sender = msg.role === 'model' || msg.role === 'assistant' ? 'ai' : 'user';
-            addMessage(msg.content, sender, true); // true = skip animation
+            addMessage(msg.content, sender, true);
           });
           
           setTimeout(() => { chat.scrollTop = chat.scrollHeight; }, 50);
         } else {
-          // Empty history fallback
           document.getElementById('welcome-screen').classList.remove('hidden');
           document.getElementById('chat-window').classList.add('hidden');
         }
-        
       } catch (e) {
-        console.error("Failed to fetch history", e);
         document.getElementById('welcome-screen').classList.remove('hidden');
         document.getElementById('chat-window').classList.add('hidden');
       }
@@ -624,21 +603,16 @@
     function startNewChat() {
       currentChatId = 'chat_' + Date.now();
       chat.innerHTML = "";
-      
-      // Show big welcome screen, hide chat
       document.getElementById('welcome-screen').classList.remove('hidden');
       document.getElementById('chat-window').classList.add('hidden');
-      
       clearSelectedFile();
       closeTestingInterface();
-      
       if(!sidebar.classList.contains("-translate-x-full")) toggleMobileMenu();
-      
       renderSidebarList();
     }
 
     /* ==========================================
-       MODAL LOGIC (PROFILE & SETTINGS)
+       MODAL LOGIC
        ========================================== */
 
     function openModal(id) {
@@ -654,19 +628,15 @@
       const modal = document.getElementById(id);
       modal.classList.add('opacity-0');
       modal.children[0].classList.add('scale-95');
-      setTimeout(() => {
-        modal.classList.add('hidden');
-      }, 300);
+      setTimeout(() => { modal.classList.add('hidden'); }, 300);
     }
 
     async function openProfile() {
       openModal('profile-modal');
       const currentName = currentChatId || "Anonymous";
-      
       try {
         const response = await fetch(`/api/profile?name=${currentName}`);
         const data = await response.json();
-        
         document.getElementById('profile-name').textContent = data.name.replace('chat_', 'Session ');
         document.getElementById('profile-goal').textContent = data.goal;
         document.getElementById('profile-progress-text').textContent = data.progress + "%";
@@ -679,40 +649,25 @@
     async function openSettings() {
       openModal('settings-modal');
       const currentName = currentChatId || "Anonymous";
-      
       try {
         const response = await fetch(`/api/settings?name=${currentName}`);
         const data = await response.json();
         if (data.settings && data.settings.mode) {
           document.getElementById('setting-persona').value = data.settings.mode;
         }
-      } catch (error) {
-        console.error("Failed to load settings", error);
-      }
+      } catch (error) {}
     }
 
     async function saveSettings() {
       const currentName = currentChatId || "Anonymous";
       const btn = document.getElementById('save-settings-btn');
       const originalText = btn.innerHTML;
-      
       btn.innerHTML = '<i class="fas fa-circle-notch animate-spin"></i> Saving...';
-      
-      const payload = {
-        name: currentName,
-        settings: { mode: document.getElementById('setting-persona').value }
-      };
-      
+      const payload = { name: currentName, settings: { mode: document.getElementById('setting-persona').value } };
       try {
-        await fetch('/api/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        
+        await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
         btn.classList.add('bg-emerald-500', 'hover:bg-emerald-600');
-        
         setTimeout(() => {
           closeModal('settings-modal');
           btn.innerHTML = originalText;
@@ -758,14 +713,9 @@
 
     function addMessage(text, sender, isHistoryLoad = false, uploadedFileName = null) {
       const wrapper = document.createElement("div");
-      
-      const animationStyles = isHistoryLoad 
-        ? "opacity-100" 
-        : "opacity-0 scale-[0.99] animate-[logoReveal_0.15s_ease-out_forwards]";
+      const animationStyles = isHistoryLoad ? "opacity-100" : "opacity-0 scale-[0.99] animate-[logoReveal_0.15s_ease-out_forwards]";
         
-      wrapper.className = sender === "user" 
-        ? `flex justify-end ${animationStyles}` 
-        : `flex justify-start ${animationStyles}`;
+      wrapper.className = sender === "user" ? `flex justify-end ${animationStyles}` : `flex justify-start ${animationStyles}`;
         
       let formattedText = renderMathFormulas(text);
       let finalContent = sender === 'user' ? text : marked.parse(formattedText);
@@ -779,7 +729,7 @@
       }
     }
 
-    /* SPLIT RESIZER CORE INTERACTION ENGINE */
+    /* SPLIT RESIZER CORE */
     function initializeDraggableResizer() {
       let isDragging = false;
       splitSlider.addEventListener('mousedown', function(e) {
@@ -818,29 +768,31 @@
     }
 
     /* ==========================================
-       TESTING / SANDBOX LOGIC WITH MOBILE MINIMIZATION
+       TESTING / SANDBOX & REVIEW LOGIC
        ========================================== */
 
     function openTestingInterface(topic) {
       examinationActive = true;
+      isReviewMode = false;
       currentTopicContext = topic || "IIT-JEE Target Matrix";
       document.getElementById("config-topic-title").textContent = `Calibrating: ${currentTopicContext}`;
+      document.getElementById("sandbox-title").textContent = "Interactive Sandbox";
       
-      // Setup display state safely for slides
       testSection.classList.remove('hidden');
-
       const returnBtn = document.getElementById('return-test-btn');
       if (returnBtn) returnBtn.remove(); 
+
+      // Reset footer buttons for active test
+      document.getElementById('submit-exam-btn').classList.remove('hidden');
+      document.getElementById('test-counter-label').textContent = "Testing Progress";
+      document.getElementById('test-timer-wrapper').classList.remove('hidden');
 
       if (window.innerWidth < 768) {
         setSplitView(100);
         splitSlider.classList.add('hidden');
-        // Let CSS trigger a smooth slide-in for mobile drawer effect
-        setTimeout(() => {
-            testSection.classList.remove('translate-x-full');
-        }, 10);
+        setTimeout(() => { testSection.classList.remove('translate-x-full'); }, 10);
       } else {
-        testSection.classList.remove('translate-x-full'); // ensure it's visible on desktop
+        testSection.classList.remove('translate-x-full'); 
         splitSlider.classList.remove('hidden');
         setTimeout(() => {
           chatSection.classList.remove('w-[100%]');
@@ -852,22 +804,22 @@
     }
 
     function toggleMobileTestView() {
-      // Allows user to manually minimize the test pane without submitting
       if (window.innerWidth < 768) {
-        testSection.classList.add('translate-x-full'); // Slide it out
-        showMobileReturnButton(); // Show return toggle pill
+        testSection.classList.add('translate-x-full'); 
+        showMobileReturnButton(); 
       }
     }
 
     function closeTestingInterface() {
       clearInterval(examCountdownInterval);
       examinationActive = false;
+      isReviewMode = false;
       chatSection.style.width = "100%";
       
       if (window.innerWidth >= 768) { 
         testSection.style.width = "0%"; 
       } else {
-        testSection.classList.add('translate-x-full'); // slide out on mobile
+        testSection.classList.add('translate-x-full');
       }
 
       setTimeout(() => {
@@ -875,7 +827,7 @@
         splitSlider.classList.add('hidden');
         const returnBtn = document.getElementById('return-test-btn');
         if (returnBtn) returnBtn.remove();
-      }, 300); // Wait for the transition to finish sliding
+      }, 300); 
     }
     
     function commitTestInitialization() {
@@ -903,7 +855,8 @@
             question: `[Magnetism Framework Block ${i}] A charged particle vector $q$ moves with absolute velocity $v$ into a magnetic flux setup parameterized by intensity $B = B_0\\hat{j}$. If paths loop uniformly, evaluate torque field matrices at phase vector $t_{${i}}$.`,
             options: ["Zero Vector Work", "q(v × B) Max Magnitude", "Helical Divergence Stage", "Dependent on Flux Gradient"],
             correct: 0,
-            selectedAnswer: null
+            selectedAnswer: null,
+            mistakeType: "Formula"
           });
         } else {
           verificationQuestions.push({
@@ -911,24 +864,42 @@
             question: `[Advanced Core Question Vector ${i}] Consider the standard reaction metrics where energy thresholds follow activation path variables. Evaluate the total equilibrium change if volume alters by factor parameter $k$.`,
             options: ["Unchanged State Profile", "Linear Proportional Expansion", "Logarithmic Decoupling", "Inversely Decoupled Output"],
             correct: 1,
-            selectedAnswer: null
+            selectedAnswer: null,
+            mistakeType: i % 2 === 0 ? "Concept" : "Silly"
           });
         }
       }
     }
 
+    // MODIFIED: Added Review Mode state (Green for correct, Red for Incorrect selected)
     function generateOptionsHTML(q, qIndex) {
       return q.options.map((opt, optIdx) => {
-        const active = q.selectedAnswer === optIdx;
+        const isSelected = q.selectedAnswer === optIdx;
+        const isCorrect = q.correct === optIdx;
+        let btnClass = 'bg-[#0F0F12] border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/20';
+        let iconHtml = '';
+
+        if (isReviewMode) {
+          if (isCorrect) {
+             btnClass = 'bg-brand-emerald/10 border-brand-emerald text-emerald-400 font-medium shadow-md';
+             iconHtml = '<i class="fas fa-check text-[10px] text-emerald-400"></i>';
+          } else if (isSelected && !isCorrect) {
+             btnClass = 'bg-brand-mistake/10 border-brand-mistake text-red-400 font-medium shadow-md';
+             iconHtml = '<i class="fas fa-times text-[10px] text-red-400"></i>';
+          } else {
+             btnClass = 'bg-[#0F0F12] border-white/5 text-slate-600 opacity-50 cursor-default';
+          }
+        } else if (isSelected) {
+          btnClass = 'bg-brand-accent/20 border-brand-accent text-white font-medium shadow-md';
+          iconHtml = '<i class="fas fa-check text-[10px] text-white"></i>';
+        }
+
         return `
-          <button onclick="recordTestAnswer(${qIndex}, ${optIdx})" class="w-full text-left px-4 py-2.5 rounded-xl border text-sm font-light tracking-wide transition-all duration-200 flex items-center justify-between ${
-            active 
-              ? 'bg-brand-accent/20 border-brand-accent text-white font-medium shadow-md' 
-              : 'bg-[#0F0F12] border-white/5 text-slate-400 hover:text-slate-200 hover:border-white/20'
-          }">
-            <span>${renderMathFormulas(opt)}</span>
-            <div class="w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${active ? 'border-brand-accent bg-brand-accent' : 'border-gray-700'}">
-              ${active ? '<i class="fas fa-check text-[10px] text-white"></i>' : ''}
+          <button ${isReviewMode ? 'disabled' : `onclick="recordTestAnswer(${qIndex},${optIdx})"`} 
+                  class="w-full text-left px-4 py-2.5 rounded-xl border text-sm font-light tracking-wide transition-all duration-200 flex items-center justify-between ${btnClass}">
+            <span class="${isReviewMode ? '' : 'pointer-events-none'}">${renderMathFormulas(opt)}</span>
+            <div class="w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${isSelected || (isReviewMode && isCorrect) ? 'border-current' : 'border-gray-700'}">
+              ${iconHtml}
             </div>
           </button>
         `;
@@ -936,17 +907,28 @@
     }
 
     function renderVerificationQuestions() {
-      testViewport.innerHTML = "";
+      if(!isReviewMode) testViewport.innerHTML = ""; 
+      
       verificationQuestions.forEach((q, index) => {
         const card = document.createElement("div");
-        card.className = "bg-brand-testCard border border-white/5 rounded-xl p-5 space-y-4 animate-item-entry opacity-0";
+        card.className = "bg-brand-testCard border border-white/5 rounded-xl p-5 space-y-4 animate-item-entry opacity-0 mb-6";
         card.style.animationDelay = `${index * 80}ms`;
         card.id = `q-card-${index}`;
         
+        let mistakeTag = '';
+        if(isReviewMode && q.selectedAnswer !== q.correct) {
+          const color = q.mistakeType === 'Concept' ? 'text-blue-400 border-blue-500/30 bg-blue-500/10' : 
+                        (q.mistakeType === 'Silly' ? 'text-purple-400 border-purple-500/30 bg-purple-500/10' : 'text-red-400 border-red-500/30 bg-red-500/10');
+          mistakeTag = `<span class="text-[9px] px-2 py-0.5 rounded border uppercase tracking-wider font-bold ${color}">${q.mistakeType} Mistake</span>`;
+        }
+
         card.innerHTML = `
           <div class="flex items-start justify-between gap-4">
-            <div class="flex items-start gap-2.5">
-              <span class="text-[10px] font-mono font-bold bg-[#1A1B24] border border-white/10 px-2 py-0.5 rounded text-indigo-400 shrink-0">Q ${q.id || (index + 1)}</span>
+            <div class="flex flex-col gap-2">
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-mono font-bold bg-[#1A1B24] border border-white/10 px-2 py-0.5 rounded text-indigo-400 shrink-0">Q ${q.id || (index + 1)}</span>
+                ${mistakeTag}
+              </div>
               <div class="text-sm text-slate-300 font-light leading-relaxed prose prose-invert max-w-full">
                 ${renderMathFormulas(q.question)}
               </div>
@@ -961,10 +943,11 @@
         `;
         testViewport.appendChild(card);
       });
-      updateTestCounter();
+      if(!isReviewMode) updateTestCounter();
     }
 
     function recordTestAnswer(qIndex, optionIndex) {
+      if(isReviewMode) return;
       verificationQuestions[qIndex].selectedAnswer = optionIndex;
       document.getElementById(`q-options-${qIndex}`).innerHTML = generateOptionsHTML(verificationQuestions[qIndex], qIndex);
       updateTestCounter();
@@ -985,7 +968,6 @@
         
         if(timeRemainingSeconds <= 0) {
           clearInterval(examCountdownInterval);
-          alert("Time domain reached boundary conditions! Submitting current parameters.");
           evaluateExamSubmission();
         }
         timeRemainingSeconds--;
@@ -994,7 +976,7 @@
 
     function requestRealtimeDoubtSupport(questionId) {
       if (window.innerWidth < 768) {
-        testSection.classList.add('translate-x-full'); // Smoothly slide away test
+        testSection.classList.add('translate-x-full'); 
         showMobileReturnButton();
       } else {
         setSplitView(50);
@@ -1002,7 +984,7 @@
 
       const targetQuestion = verificationQuestions.find(q => q.id === questionId);
       if (targetQuestion) {
-        input.value = `I am stuck on Question ${questionId} in the test panel:\n\n"${targetQuestion.question}"\n\nCan you explain the conceptual core of this problem and guide me to the right answer?`;
+        input.value = `I need help with Question ${questionId}:\n\n"${targetQuestion.question}"\n\nCan you explain this visually step-by-step?`;
         input.focus();
         input.style.height = input.scrollHeight + 'px';
       }
@@ -1012,9 +994,8 @@
       if (document.getElementById('return-test-btn')) return;
       const btn = document.createElement('button');
       btn.id = 'return-test-btn';
-      // Placed slightly floating at the top inside the chat area
       btn.className = 'fixed top-16 left-1/2 -translate-x-1/2 z-[60] bg-brand-emerald hover:bg-emerald-500 text-white px-5 py-2.5 rounded-full shadow-[0_4px_15px_rgba(16,185,129,0.3)] text-xs font-bold flex items-center gap-2 border border-emerald-400 transition-all active:scale-95';
-      btn.innerHTML = '<i class="fas fa-clipboard-list"></i> Return to Active Test';
+      btn.innerHTML = `<i class="fas fa-clipboard-list"></i> Return to ${isReviewMode ? 'Review' : 'Active Test'}`;
       
       btn.onclick = () => {
         testSection.classList.remove('translate-x-full');
@@ -1023,12 +1004,65 @@
       document.body.appendChild(btn);
     }
 
+    // MODIFIED: Transition to Review Dashboard instead of closing
     function evaluateExamSubmission() {
+      clearInterval(examCountdownInterval);
       let accurate = 0;
-      verificationQuestions.forEach(q => { if(q.selectedAnswer === q.correct) accurate++; });
-      closeTestingInterface();
-      const payloadReport = `### 📊 Diagnostic Evaluation Completed\n\nI have evaluated your answers from the testing area for **${currentTopicContext}**.\n\n* **Metrics Solved:** ${accurate} / ${verificationQuestions.length} correct loops.\n* **Accuracy Bracket:** ${Math.round((accurate/verificationQuestions.length)*100)}%\n\nLet me know if you want to walk through the complete step-by-step mathematical derivations for these questions!`;
+      let mistakes = { concept: 0, formula: 0, silly: 0 };
+      
+      verificationQuestions.forEach(q => { 
+        if(q.selectedAnswer === q.correct) {
+          accurate++; 
+        } else {
+          if(q.mistakeType === 'Concept') mistakes.concept++;
+          else if(q.mistakeType === 'Silly') mistakes.silly++;
+          else mistakes.formula++;
+        }
+      });
+      
+      isReviewMode = true;
+      document.getElementById("sandbox-title").textContent = "Mistake Analysis";
+      document.getElementById("test-timer-wrapper").classList.add('hidden');
+      document.getElementById("submit-exam-btn").classList.add('hidden');
+      document.getElementById('test-counter-label').textContent = "Final Score";
+      document.getElementById('test-counter').innerHTML = `<span class="text-emerald-400 font-bold">${accurate} / ${verificationQuestions.length}</span>`;
+
+      renderMistakeAnalysisDashboard(accurate, mistakes);
+      
+      const payloadReport = `### 📊 Diagnostic Evaluation Completed\n\nI have evaluated your answers for **${currentTopicContext}**. You can view your **Mistake Analysis** in the right panel.\n\n* **Score:** ${accurate} / ${verificationQuestions.length}\n* **Accuracy Bracket:** ${Math.round((accurate/verificationQuestions.length)*100)}%\n\nLet me know if you want to walk through the visual explanations for the ones you missed.`;
       addMessage(payloadReport, "ai");
+    }
+
+    function renderMistakeAnalysisDashboard(accurate, mistakes) {
+      testViewport.innerHTML = ""; 
+      
+      const totalWrong = verificationQuestions.length - accurate;
+      const dashboard = document.createElement('div');
+      dashboard.className = "bg-[#16171E] border border-white/5 rounded-xl p-5 mb-8 animate-item-entry shadow-lg";
+      
+      let mistakeHTML = '';
+      if(totalWrong === 0) {
+        mistakeHTML = `<div class="text-emerald-400 text-sm font-medium flex items-center gap-2"><i class="fas fa-star"></i> Perfect Run! No leaks detected.</div>`;
+      } else {
+        mistakeHTML = `
+          <p class="text-xs text-gray-400 mb-4">You have <span class="text-red-400 font-bold">${totalWrong} repeat leaks</span> in this module. Fix the pattern, not just the paper.</p>
+          <div class="space-y-2">
+            ${mistakes.concept > 0 ? `<div class="flex justify-between items-center bg-[#0F0F12] p-2 rounded border border-white/5"><span class="text-xs text-brand-concept font-medium flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-brand-concept"></div> Concept</span><span class="text-xs text-gray-500">${mistakes.concept} questions</span></div>` : ''}
+            ${mistakes.formula > 0 ? `<div class="flex justify-between items-center bg-[#0F0F12] p-2 rounded border border-white/5"><span class="text-xs text-brand-mistake font-medium flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-brand-mistake"></div> Formula</span><span class="text-xs text-gray-500">${mistakes.formula} questions</span></div>` : ''}
+            ${mistakes.silly > 0 ? `<div class="flex justify-between items-center bg-[#0F0F12] p-2 rounded border border-white/5"><span class="text-xs text-brand-silly font-medium flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-brand-silly"></div> Silly</span><span class="text-xs text-gray-500">${mistakes.silly} questions</span></div>` : ''}
+          </div>
+        `;
+      }
+
+      dashboard.innerHTML = `
+        <h3 class="text-sm font-bold text-white mb-2 tracking-tight uppercase">Where you lose marks</h3>
+        ${mistakeHTML}
+      `;
+      
+      testViewport.appendChild(dashboard);
+      
+      // Re-render questions in review mode below dashboard
+      renderVerificationQuestions();
     }
 
     /* ==========================================
@@ -1045,7 +1079,6 @@
       input.value = "";
       input.style.height = "auto";
       
-      // Instantly hide welcome screen and show chat
       document.getElementById('welcome-screen').classList.add('hidden');
       document.getElementById('chat-window').classList.remove('hidden');
 
@@ -1092,7 +1125,7 @@
         
         if (isTrigger && testQuestions && testQuestions.length > 0) {
           addMessage(data.chatResponse || data.ChatResponse || "I have launched your interactive verification loop!", "ai", false);
-          verificationQuestions = testQuestions.map(q => ({ ...q, selectedAnswer: null }));
+          verificationQuestions = testQuestions.map(q => ({ ...q, selectedAnswer: null, mistakeType: "Concept" })); // Fallback mistake type
           openTestingInterface(titleOfTest);
         } else {
           addMessage(data.response || data.chatResponse || data.ChatResponse, "ai", false);
@@ -1108,14 +1141,13 @@
     input.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; });
     
     window.addEventListener('resize', () => {
-      if(examinationActive) {
+      if(examinationActive || isReviewMode) {
         if (window.innerWidth < 768) {
           setSplitView(100);
           splitSlider.classList.add('hidden');
         } else {
           setSplitView(50);
           splitSlider.classList.remove('hidden');
-          // If resizing to desktop, clean up the mobile return button if it's there
           const returnBtn = document.getElementById('return-test-btn');
           if (returnBtn) returnBtn.remove();
           testSection.classList.remove('translate-x-full'); 
