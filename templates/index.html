@@ -479,6 +479,23 @@
       return formatted;
     }
 
+    // LISTENER FOR CTRL+V PASTE (Global scope image grabber)
+    window.addEventListener('paste', e => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const blob = items[i].getAsFile();
+          selectedFileObject = blob;
+          previewFilename.textContent = blob.name || "pasted_image.png";
+          filePreviewZone.classList.remove("hidden");
+          input.focus();
+          break;
+        }
+      }
+    });
+
     window.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => {
         const splash = document.getElementById('splash-screen');
@@ -719,7 +736,8 @@
       inputField.focus();
     }
 
-    function addMessage(text, sender, isHistoryLoad = false, uploadedFileName = null) {
+    // MODIFIED TO RENDER IMAGES IF PASSED
+    function addMessage(text, sender, isHistoryLoad = false, imageUrl = null) {
       const wrapper = document.createElement("div");
       const animationStyles = isHistoryLoad ? "opacity-100" : "opacity-0 scale-[0.99] animate-[logoReveal_0.15s_ease-out_forwards]";
         
@@ -729,9 +747,14 @@
       let finalContent = sender === 'user' ? text : marked.parse(formattedText);
       let bubbleClass = sender === 'user' ? 'user-bubble' : 'ai-bubble';
 
+      // Insert image tag directly into the message content if user sent one
+      if (sender === 'user' && imageUrl) {
+        finalContent = `<img src="${imageUrl}" class="max-w-full md:max-w-sm rounded-lg shadow-sm border border-white/10 ${text ? 'mb-3' : ''}" alt="Pasted Image"/>` + (text ? `<span>${text}</span>` : '');
+      }
+
       let innerHTML = '';
       
-      // Add classical AI avatar
+      // AI Avatar
       if (sender === 'ai') {
         innerHTML += `
           <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-800 flex items-center justify-center text-white shrink-0 shadow-md border border-white/10 mt-1">
@@ -742,8 +765,8 @@
 
       let bubbleHtml = `<div class="${bubbleClass} px-4 py-3 max-w-[85%] md:max-w-[75%] prose prose-invert text-[15px] leading-relaxed relative group">${finalContent}`;
       
-      // Add edit pencil icon for user
-      if (sender === 'user') {
+      // User Edit Button
+      if (sender === 'user' && text) {
         bubbleHtml += `
           <button onclick="editMessage(this)" data-raw="${encodeURIComponent(text)}" class="absolute -left-10 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/20 transition-all flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100">
             <i class="fas fa-pencil-alt text-xs"></i>
@@ -981,7 +1004,6 @@
     function recordTestAnswer(qIndex, optionIndex) {
       if(isReviewMode) return;
       
-      // If the user clicks the option they already selected, uncheck it
       if (verificationQuestions[qIndex].selectedAnswer === optionIndex) {
         verificationQuestions[qIndex].selectedAnswer = null;
       } else {
@@ -1118,14 +1140,20 @@
       document.getElementById('welcome-screen').classList.add('hidden');
       document.getElementById('chat-window').classList.remove('hidden');
 
-      addMessage(text, "user", false, fileName);
+      // Generate local preview URL if file is an image
+      let imagePreviewUrl = null;
+      if (currentFile && currentFile.type.startsWith('image/')) {
+        imagePreviewUrl = URL.createObjectURL(currentFile);
+      }
+
+      addMessage(text, "user", false, imagePreviewUrl);
       clearSelectedFile();
 
       const chatExists = chatSessions.find(c => c.id === currentChatId);
       if (!chatExists) {
         let newTitle = text.substring(0, 25);
         if (text.length > 25) newTitle += "...";
-        if (!text) newTitle = "Image uploaded...";
+        if (!text && imagePreviewUrl) newTitle = "Image uploaded...";
         
         chatSessions.unshift({
           id: currentChatId,
