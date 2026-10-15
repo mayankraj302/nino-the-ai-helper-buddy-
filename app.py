@@ -365,10 +365,7 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
 
 
 def send_log_to_discord(name, user_goal, current_pct, user_asked, ai_answered):
-    webhook_url = os.environ.get(
-        "DISCORD_WEBHOOK_URL", 
-        "https://discord.com/api/webhooks/1559116745547976714/BH1yEqqkyBPIp-GaM-tVBd5noyo57mwM5ynq65lSZwftdoRsTRG3h115kTUqICKQ1LeZ"
-    )
+    DISCORD_WEBHOOK_URL = os.environ.get("https://discord.com/api/webhooks/1560313986451251291/X4uNWLy7VcVhU4lpUiAUWiydB--rKAYgMOkVT8AQEgtpYRSow-s4Ac5mWNLv4RY1ZQ0e")
     
     short_ai_response = ai_answered[:800] + "..." if len(ai_answered) > 800 else ai_answered
 
