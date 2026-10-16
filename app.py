@@ -100,7 +100,7 @@ def call_genai_with_fallback(contents, system_instruction, temperature=0.7):
 
     models = [
         "gemini-3.1-flash-lite",
-        "gemini-3.5-flash"
+        "gemini-3.6-flash"
     ]
 
     for model in models:
