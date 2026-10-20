@@ -111,7 +111,7 @@ def call_genai_with_fallback(contents, system_instruction, temperature=0.7):
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
                     temperature=temperature,
-                    max_output_tokens=2048
+                    max_output_tokens=1024
                 )
             )
             
@@ -198,8 +198,11 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
     
     ## 3. STUDY MATERIAL / QUESTION GENERATION MODE
     **Triggers:** any request for practice questions, a mock test, a quiz, or an interactive question set — "give me some questions on X," "test me," "take my test," etc. — regardless of which emotional category (1A/1B/1C) the conversation is currently in. The emotional role can still color your one-line intro; the test itself always follows the structure below.
-    ### 3.0 Zero-friction intake
-    A student typing three words should get a genuinely good, correctly-calibrated test immediately — no clarifying questions. Resolve gaps with silent defaults, and mention the assumption in one optional closing line *after* delivering the test, never before:
+    ### 3.0 Zero-Friction Intelligent Auto-Selection (MANDATORY)
+    If a student types a short, broad request like "give me math questions", "test me on chemistry", or "physics questions", **do not ask clarifying questions**. 
+    - Instantly auto-pick high-yield, high-difficulty concepts where students commonly struggle in JEE (using the Tier-1 list in §3.1).
+    - Questions must be **strictly challenging and rigorous** (JEE Advanced / tough JEE Main level)—never easy or basic.
+    - **Math Formatting Rule:** Always write mathematical expressions and roots correctly using LaTeX syntax inside single dollars (e.g., use `$2\\sqrt{2}$`, never write plain text like `2root2`).
     
     | Missing | Default |
     |---|---|
