@@ -423,6 +423,57 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
   .grabber { display: block; }
 }
 @media (min-width: 768px) { #backdrop { display: none; } }
+
+/* ============================================================
+   V3 — TEST PANEL: calm background, true full-screen on mobile
+   ============================================================ */
+#test-section {
+  --test-bg: rgba(12,12,18,.93);
+  --glass: rgba(255,255,255,.045);
+  --glass-hover: rgba(255,255,255,.09);
+  --glass-strong: rgba(255,255,255,.08);
+  --glass-border: rgba(255,255,255,.10);
+  --glass-hi: rgba(255,255,255,.14);
+  --sep: rgba(255,255,255,.08);
+  background: var(--test-bg);
+  -webkit-backdrop-filter: blur(48px) saturate(110%); backdrop-filter: blur(48px) saturate(110%);
+  box-shadow: 0 10px 40px rgba(0,0,0,.35);
+}
+@media (prefers-color-scheme: light) {
+  #test-section {
+    --test-bg: rgba(247,248,252,.96);
+    --glass: rgba(255,255,255,.85);
+    --glass-hover: rgba(255,255,255,1);
+    --glass-strong: rgba(255,255,255,1);
+    --glass-border: rgba(30,30,60,.09);
+    --glass-hi: rgba(255,255,255,1);
+    --sep: rgba(30,30,60,.08);
+  }
+}
+#test-section::before { opacity: .15; }            /* much softer sheen */
+#test-section .q-card, #test-section .report-card, #test-section .opt { box-shadow: none; }
+#test-section .q-card, #test-section .report-card { background: var(--glass); }
+#configurator { background: var(--test-bg); -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px); }
+#test-section .cfg-card { background: var(--glass); }
+.sheet-head, .sheet-foot { background: transparent; }
+
+@media (max-width: 767px) {
+  #test-section {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    width: 100% !important; height: 100dvh; max-height: 100dvh;
+    border-radius: 0; border: 0; z-index: 80;
+    transform: translateY(100%); transition: transform .5s var(--spring);
+    box-shadow: none;
+  }
+  #test-section.shown { transform: none; }
+  #test-section .grabber { display: none; }
+  #test-section .sheet-head { padding-top: var(--safe-t); }
+  #test-section .sheet-foot { padding-bottom: calc(12px + var(--safe-b)); }
+  #test-viewport { padding: 14px 12px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  .q-top { flex-direction: column; gap: 10px; }          /* Explain button no longer squeezes the question */
+  .q-top .explain-btn { align-self: flex-start; order: 2; }
+  .sheet-bar { padding: 0 10px; height: 56px; }
+}
 </style>
 </head>
 <body>
@@ -926,7 +977,7 @@ function startTestingClock() {
 function requestRealtimeDoubtSupport(id) {
   if (isMobile()) { testSection.classList.remove('shown'); showMobileReturnButton(); } else setSplitView(50);
   const q = verificationQuestions.find(x => x.id === id);
-  if (q) { input.value = `I need help with Question ${id}:\n\n"${q.question}"\n\nCan you explain this visually, step by step?`; autoGrow(); updateSendState(); input.focus(); }
+  if (q) { input.value = `I need help with Question ${id}:\n\n"${q.question}"\n\nCan you explain this visually, step by step?`; autoGrow(); updateSendState(); setTimeout(() => { chat.scrollTop = chat.scrollHeight; input.focus({ preventScroll: true }); }, isMobile() ? 600 : 0); }
 }
 function showMobileReturnButton() {
   if ($('return-btn')) return;
@@ -1076,11 +1127,20 @@ async function send() {
 input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !isMobile()) { e.preventDefault(); send(); } });
 input.addEventListener('input', () => { autoGrow(); updateSendState(); });
 
+let lastW = window.innerWidth;
 window.addEventListener('resize', () => {
+  const w = window.innerWidth;
+  if (w === lastW) return;                 // height-only change = mobile keyboard; do nothing
+  const wasMobile = lastW < 768; lastW = w;
   if (!(examinationActive || isReviewMode)) return;
   $('to-chat-btn').classList.toggle('hidden', !isMobile());
-  if (isMobile()) { slider.classList.add('hidden'); testSection.style.width = ''; testSection.classList.add('shown'); }
-  else { slider.classList.remove('hidden'); setSplitView(50); testSection.classList.remove('shown'); $('return-btn')?.remove(); }
+  if (isMobile()) {
+    slider.classList.add('hidden'); testSection.style.width = '';
+    if (!wasMobile && !$('return-btn')) testSection.classList.add('shown');
+  } else {
+    slider.classList.remove('hidden'); setSplitView(50);
+    testSection.classList.remove('shown'); $('return-btn')?.remove();
+  }
 });
 </script>
 </body>
