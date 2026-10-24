@@ -20,6 +20,76 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+CUTOFF_MESSAGE = "That test got cut off while I was generating it. Ask me again and I'll rebuild it."
+
+
+def looks_like_test_json(text):
+    """True when text smells like a (possibly broken/truncated) test payload."""
+    text = text or ""
+    # Starts like our JSON envelope (even if cut off very early)
+    if re.match(r'\s*(?:```(?:json)?\s*)?\{\s*"chatResponse"', text, re.IGNORECASE):
+        return True
+    return bool(re.search(r'"questions"\s*:', text) and re.search(r'"options"\s*:', text))
+
+
+def parse_ai_json(text):
+    """
+    Returns the parsed dict when the model answered in the JSON envelope
+    ({"chatResponse": ..., "questions": [...]}), otherwise None.
+    Same extraction strategy the /guide route always used, now reusable.
+    """
+    if not text:
+        return None
+
+    json_str = ""
+    # 1. Markdown code block containing JSON
+    markdown_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL | re.IGNORECASE)
+    if markdown_match:
+        json_str = markdown_match.group(1)
+    else:
+        # 2. Exact signature of the expected envelope
+        match = re.search(r'\{\s*"chatResponse"', text, re.IGNORECASE)
+        if match:
+            start_idx = match.start()
+            end_idx = text.rfind('}')
+            if end_idx > start_idx:
+                json_str = text[start_idx:end_idx + 1]
+        else:
+            # 3. Basic curly brace search
+            start_idx = text.find('{')
+            end_idx = text.rfind('}')
+            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                json_str = text[start_idx:end_idx + 1]
+
+    if not json_str:
+        return None
+    try:
+        parsed = json.loads(json_str)
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(parsed, dict):
+        return None
+
+    keys = {str(k).lower() for k in parsed}
+    if "chatresponse" not in keys and "questions" not in keys:
+        return None  # some other JSON-looking thing, not our envelope
+    return parsed
+
+
+def unpack_envelope(envelope):
+    """Normalises the envelope's keys (any casing) into plain Python values."""
+    n = {str(k).lower(): v for k, v in envelope.items()}
+    questions = n.get("questions") or []
+    if not isinstance(questions, list):
+        questions = []
+    return {
+        "chat_text": n.get("chatresponse") or "",
+        "is_trigger": n.get("istesttrigger", True),
+        "title": n.get("testtitle") or "Evaluation Matrix",
+        "questions": questions,
+    }
+
+
 class SessionManager:
     """Manages session persistence safely using a local JSON file."""
     def __init__(self, filepath="local_memory.json"):
@@ -65,16 +135,61 @@ class SessionManager:
             self._save_memory()
         return session
 
+    def delete_session(self, username):
+        if username in self._sessions:
+            del self._sessions[username]
+            self._save_memory()
+            return True
+        return False
+
+    def migrate_legacy_history(self):
+        """
+        One-time cleanup for older chats that saved the raw test JSON as the AI's
+        message. Converts them to friendly text + a separate "test" field.
+        """
+        changed = False
+        for session in self._sessions.values():
+            for msg in session.get("history", []):
+                if msg.get("role") not in ("model", "assistant"):
+                    continue
+                if "test" in msg or "model_text" in msg:
+                    continue
+                content = msg.get("content") or ""
+                envelope = parse_ai_json(content)
+                if envelope is not None:
+                    info = unpack_envelope(envelope)
+                    has_test = len(info["questions"]) > 0
+                    msg["content"] = info["chat_text"] or (f"Here is your {info['title']} test." if has_test else content)
+                    if has_test:
+                        msg["test"] = {"title": info["title"], "questions": info["questions"]}
+                    msg["model_text"] = json.dumps(envelope, ensure_ascii=False)
+                    changed = True
+                elif looks_like_test_json(content):
+                    msg["content"] = CUTOFF_MESSAGE   # broken/truncated legacy message
+                    changed = True
+        if changed:
+            self._save_memory()
+
     def advance_progress(self, username, step=12, maximum=100):
         if username in self._sessions:
             self._sessions[username]["pct"] = min(self._sessions[username]["pct"] + step, maximum)
             self._save_memory()
 
-    def append_history(self, username, user_content, ai_content):
+    def append_history(self, username, user_content, ai_content, test=None, model_text=None):
+        """
+        content    -> what the STUDENT sees in the chat (always human-readable)
+        test       -> the questions, kept separately so the UI can reopen the test
+        model_text -> what the MODEL sees as its own previous turn (original JSON)
+        """
         if username in self._sessions:
             history = self._sessions[username]["history"]
             history.append({"role": "user", "content": user_content})
-            history.append({"role": "model", "content": ai_content})
+            ai_entry = {"role": "model", "content": ai_content}
+            if test:
+                ai_entry["test"] = test
+            if model_text:
+                ai_entry["model_text"] = model_text
+            history.append(ai_entry)
             
             # Retain last 40 history entries (20 conversation turns)
             # Prevents context overflow while preserving memory across sessions
@@ -83,6 +198,7 @@ class SessionManager:
 
 
 session_store = SessionManager()
+session_store.migrate_legacy_history()
 
 
 def call_genai_with_fallback(contents, system_instruction, temperature=0.7):
@@ -111,7 +227,7 @@ def call_genai_with_fallback(contents, system_instruction, temperature=0.7):
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
                     temperature=temperature,
-                    max_output_tokens=1024
+                    max_output_tokens=4096
                 )
             )
             
@@ -469,10 +585,16 @@ def get_chat_history(chat_id):
     # Retrieve the specific chat session from the local JSON memory
     session = session_store._sessions.get(chat_id, {})
     return jsonify({
-        "history": session.get("history", []),
+        "history": [{k: v for k, v in m.items() if k != "model_text"} for m in session.get("history", [])],
         "goal": session.get("goal", "General Study Optimization"),
         "pct": session.get("pct", 10)
     })
+
+@app.route('/api/chat/<chat_id>', methods=['DELETE'], endpoint='delete_chat')
+def delete_chat(chat_id):
+    deleted = session_store.delete_session(chat_id)
+    return jsonify({"status": "deleted" if deleted else "not_found"}), 200
+
 
 @app.route('/guide', methods=['POST'])
 def guide():
@@ -506,12 +628,19 @@ def guide():
         current_state = session_store.update_goal(name, interest)
         user_prompt = followup if followup else f"Guide me for {current_state['goal']}"
 
+        # The model keeps seeing its own original turns (incl. the JSON it produced);
+        # the student only ever sees the friendly "content" version.
+        model_history = [
+            {"role": m["role"], "content": m.get("model_text") or m["content"]}
+            for m in current_state["history"]
+        ]
+
         raw_response = ask_ai(
             prompt=user_prompt,
             current_progress=current_state["pct"],
             user_goal=current_state["goal"],
             user_name=name,
-            message_history=current_state["history"],
+            message_history=model_history,
             file_bytes=file_bytes,
             mime_type=mime_type
         )
@@ -522,62 +651,53 @@ def guide():
             session_store.advance_progress(name)
             clean_response = raw_response.replace("[PROGRESS_UP]", "").strip()
 
-        session_store.append_history(name, user_prompt, clean_response)
-        
         updated_pct = current_state["pct"]
-        send_log_to_discord(name, current_state["goal"], updated_pct, user_prompt, clean_response)
+        envelope = parse_ai_json(clean_response)
 
-        # ==========================================
-        # SMART INTERACTIVE ENGINE PARSING 
-        # ==========================================
-        try:
-            json_str = ""
-            
-            # 1. Safest method: Look for markdown code block containing JSON
-            markdown_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', clean_response, re.DOTALL | re.IGNORECASE)
-            
-            if markdown_match:
-                json_str = markdown_match.group(1)
-            else:
-                # 2. Backup method: Find exact signature of expected JSON
-                match = re.search(r'\{\s*"chatResponse"', clean_response, re.IGNORECASE)
-                if match:
-                    start_idx = match.start()
-                    end_idx = clean_response.rfind('}')
-                    if end_idx > start_idx:
-                        json_str = clean_response[start_idx:end_idx+1]
-                else:
-                    # 3. Final hail mary: Basic curly brace search
-                    start_idx = clean_response.find('{')
-                    end_idx = clean_response.rfind('}')
-                    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-                        json_str = clean_response[start_idx:end_idx+1]
+        # ---- A) Model answered in the JSON envelope (test or JSON-wrapped chat) ----
+        if envelope is not None:
+            info = unpack_envelope(envelope)
+            has_test = len(info["questions"]) > 0
+            friendly = info["chat_text"] or (f"Here is your {info['title']} test." if has_test else clean_response)
 
-            if not json_str:
-                raise ValueError("No JSON payload detected.")
+            session_store.append_history(
+                name, user_prompt, friendly,
+                test={"title": info["title"], "questions": info["questions"]} if has_test else None,
+                model_text=json.dumps(envelope, ensure_ascii=False),
+            )
+            log_text = f"[Test: {info['title']} - {len(info['questions'])} questions] {friendly}" if has_test else friendly
+            send_log_to_discord(name, current_state["goal"], updated_pct, user_prompt, log_text)
 
-            parsed_json = json.loads(json_str)
-            
-            # Normalize keys to lowercase for structural safety
-            normalized_json = {k.lower(): v for k, v in parsed_json.items()}
-            
             return jsonify({
-                "chatResponse": parsed_json.get("chatResponse") or parsed_json.get("ChatResponse"),
-                "isTestTrigger": normalized_json.get("istesttrigger", True),
-                "testTitle": parsed_json.get("testTitle") or parsed_json.get("TestTitle", "Evaluation Matrix"),
-                "questions": parsed_json.get("questions") or parsed_json.get("Questions", []),
+                "chatResponse": friendly,
+                "isTestTrigger": info["is_trigger"],
+                "testTitle": info["title"],
+                "questions": info["questions"],
                 "progress": updated_pct
             })
-            
-        except (ValueError, TypeError, json.JSONDecodeError):
-            # Fallback: Format as regular conversation text response
+
+        # ---- B) Looks like a test, but the JSON is broken/cut off: never show raw code ----
+        if looks_like_test_json(clean_response):
+            session_store.append_history(name, user_prompt, CUTOFF_MESSAGE)
+            send_log_to_discord(name, current_state["goal"], updated_pct, user_prompt, "[Broken test JSON] " + clean_response)
             return jsonify({
-                "response": clean_response,
+                "response": CUTOFF_MESSAGE,
                 "progress": updated_pct,
                 "isTestTrigger": False,
                 "testTitle": "",
                 "questions": []
             })
+
+        # ---- C) Normal conversation text ----
+        session_store.append_history(name, user_prompt, clean_response)
+        send_log_to_discord(name, current_state["goal"], updated_pct, user_prompt, clean_response)
+        return jsonify({
+            "response": clean_response,
+            "progress": updated_pct,
+            "isTestTrigger": False,
+            "testTitle": "",
+            "questions": []
+        })
     except Exception as e:
         return jsonify({"response": f"Error: {str(e)}"}), 500
 
