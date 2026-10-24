@@ -474,6 +474,14 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
   .q-top .explain-btn { align-self: flex-start; order: 2; }
   .sheet-bar { padding: 0 10px; height: 56px; }
 }
+
+/* Test card shown in chat instead of raw JSON */
+.test-card { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 12px 14px; border-radius: 20px; max-width: 420px; }
+.tc-ic { width: 40px; height: 40px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 19px; color: #fff; background: linear-gradient(135deg,#0A84FF,#7D7AFF); position: relative; z-index: 1; flex-shrink: 0; }
+.tc-t { flex: 1; min-width: 0; position: relative; z-index: 1; }
+.tc-t b { display: block; font-size: 15px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tc-t small { color: var(--label-2); font-size: 13px; }
+.test-card .pill-btn { position: relative; z-index: 1; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -760,6 +768,7 @@ async function deleteChat(chatId, ev) {
 function showWelcome(show) { $('welcome').classList.toggle('hidden', !show); chat.classList.toggle('hidden', show); }
 
 async function switchChat(chatId) {
+  if (chatId !== currentChatId) { closeTestingInterface(); verificationQuestions = []; }
   currentChatId = chatId; chat.innerHTML = ""; renderSidebarList();
   if (isMobile() && sidebar.classList.contains('open')) toggleMenu();
   try {
@@ -768,7 +777,7 @@ async function switchChat(chatId) {
     const data = await res.json();
     if (data.history && data.history.length) {
       showWelcome(false);
-      data.history.forEach(m => addMessage(m.content, (m.role === 'model' || m.role === 'assistant') ? 'ai' : 'user', true));
+      data.history.forEach(m => addMessage(m.content, (m.role === 'model' || m.role === 'assistant') ? 'ai' : 'user', true, null, m.test));
       setTimeout(() => { chat.scrollTop = chat.scrollHeight; }, 50);
     } else showWelcome(true);
   } catch { showWelcome(true); }
@@ -776,7 +785,7 @@ async function switchChat(chatId) {
 
 function startNewChat() {
   currentChatId = 'chat_' + Date.now(); chat.innerHTML = ""; showWelcome(true);
-  clearSelectedFile(); closeTestingInterface();
+  clearSelectedFile(); closeTestingInterface(); verificationQuestions = [];
   if (sidebar.classList.contains('open')) toggleMenu();
   renderSidebarList();
 }
@@ -845,12 +854,55 @@ function updateSendState() { sendBtn.classList.toggle('off', !input.value.trim()
 function autoGrow() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 140) + 'px'; }
 function editMessage(btn) { input.value = decodeURIComponent(btn.getAttribute('data-raw')); autoGrow(); updateSendState(); input.focus(); }
 
-function addMessage(text, sender, isHistoryLoad = false, imageUrl = null) {
+/* ---- Raw test JSON saved in history -> clean "Open test" card ---- */
+const testStash = {}; let stashN = 0;
+function extractTestPayload(text) {
+  if (typeof text !== 'string') return null;
+  if (!/"question"\s*:/.test(text) || !/"options"\s*:/.test(text)) return null;
+  const hits = (text.match(/"question"\s*:/g) || []).length;
+  const cleaned = text.replace(/```(?:json)?/gi, '').trim();
+  let data = null;
+  try { data = JSON.parse(cleaned); } catch {
+    const cands = [['{', '}'], ['[', ']']];
+    for (const [o, c] of cands) {
+      const a = cleaned.indexOf(o), b = cleaned.lastIndexOf(c);
+      if (a >= 0 && b > a) { try { data = JSON.parse(cleaned.slice(a, b + 1)); break; } catch {} }
+    }
+  }
+  let qs = Array.isArray(data) ? data : (data && (data.questions || data.Questions));
+  if (!Array.isArray(qs) || !qs.length || typeof qs[0] !== 'object') qs = null;
+  return {
+    count: qs ? qs.length : hits, questions: qs,
+    message: (data && !Array.isArray(data) && (data.chatResponse || data.ChatResponse)) || '',
+    title: (data && !Array.isArray(data) && (data.testTitle || data.TestTitle)) || ''
+  };
+}
+const MISTAKE_TYPES = ['Concept', 'Formula', 'Silly'];
+const normMistake = t => MISTAKE_TYPES.includes(t) ? t : 'Concept';
+function reopenTest(id) {
+  const pl = testStash[id]; if (!pl || !pl.questions) return;
+  verificationQuestions = pl.questions.map(q => ({ ...q, selectedAnswer: null, mistakeType: normMistake(q.mistakeType) }));
+  openTestingInterface(pl.title || "Practice Test");
+}
+
+function addMessage(text, sender, isHistoryLoad = false, imageUrl = null, testObj = null) {
   const wrap = document.createElement('div');
   wrap.className = `msg ${sender}${isHistoryLoad ? ' history' : ''}`;
   text = text == null ? '' : String(text);
 
-  if (sender === 'ai') {
+  const payload = sender === 'ai'
+    ? ((testObj && Array.isArray(testObj.questions) && testObj.questions.length)
+        ? { count: testObj.questions.length, questions: testObj.questions, message: text, title: testObj.title || '' }
+        : extractTestPayload(text))   // fallback for chats saved before the backend fix
+    : null;
+  if (payload) {
+    const id = 't' + (++stashN); testStash[id] = payload;
+    const msgHtml = payload.message ? marked.parse(renderMathFormulas(payload.message)) : '<p>I prepared a practice test for you.</p>';
+    const open = payload.questions ? `<button class="gbtn pill-btn accent" onclick="reopenTest('${id}')">Open test</button>` : '';
+    wrap.innerHTML = `<div class="avatar">${icon('sparkle')}</div><div class="ai-text rich">${msgHtml}
+      <div class="test-card glass"><span class="tc-ic">${icon('list')}</span>
+        <div class="tc-t"><b>${esc(payload.title || 'Practice test')}</b><small>${payload.count} question${payload.count === 1 ? '' : 's'}</small></div>${open}</div></div>`;
+  } else if (sender === 'ai') {
     let t = text.replace(/```(?:xml|html|svg)?\s*(<svg[\s\S]*?<\/svg>)\s*```/gi, '$1');
     const svgs = [];
     t = t.replace(/<svg[\s\S]*?<\/svg>/gi, m => { svgs.push(m); return `%%%SVG_${svgs.length - 1}%%%`; });
@@ -1114,8 +1166,8 @@ async function send() {
     const title = data.testTitle || data.TestTitle || text;
 
     if (isTrigger && qs && qs.length) {
-      addMessage(data.chatResponse || data.ChatResponse || "I've opened your practice test.", "ai");
-      verificationQuestions = qs.map(q => ({ ...q, selectedAnswer: null, mistakeType: "Concept" }));
+      addMessage(data.chatResponse || data.ChatResponse || "I've opened your practice test.", "ai", false, null, { title, questions: qs });
+      verificationQuestions = qs.map(q => ({ ...q, selectedAnswer: null, mistakeType: normMistake(q.mistakeType) }));
       openTestingInterface(title);
     } else addMessage(data.response || data.chatResponse || data.ChatResponse, "ai");
   } catch {
@@ -1124,7 +1176,7 @@ async function send() {
   } finally { glow.classList.remove('busy'); }
 }
 
-input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !isMobile()) { e.preventDefault(); send(); } });
+input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } });
 input.addEventListener('input', () => { autoGrow(); updateSendState(); });
 
 let lastW = window.innerWidth;
