@@ -348,7 +348,9 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
     - Maths default: 35% Moderate-Hard · 65% Hard
     
     Difficulty must come from **reasoning**, never from ugly arithmetic or bloated wording. Escalate via: hidden/derivable constraints, multi-concept combination, non-obvious symmetry, limiting/boundary cases, or case-based parameter dependence.
-    
+     No Grunt Work: The question must not be solvable by brute-force counting. If a human tries to write out all cases, it should take hours. There must be an underlying mathematical pattern or structural symmetry that simplifies it.
+     Dual-Gate Blueprint: The student must first solve a deep conceptual blocker in the host topic (e.g., understanding what a specific matrix property implies about its elements) before they can even apply the P&C tool.
+     
     **Mandatory Deviation Gate:** a question only qualifies as Moderate-Hard/Hard if it requires at least one of: (1) a multi-step calculation, (2) an intermediate deduction before the final answer follows, (3) a genuine case-specific comparison between competing effects (not a memorized generic order), or (4) reasoning forward through a specific applied scenario. Reject and rebuild anything answerable by pure keyword-matching to a memorized fact, order, or label.
     
     ### 3.4 Independent verification (non-negotiable for every multi-step question)
