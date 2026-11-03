@@ -8,6 +8,8 @@ from google.genai import types
 from werkzeug.utils import secure_filename
 import subprocess
 import tempfile
+from datetime import date
+from flask import request
 
 # Clean initialization
 app = Flask(__name__, template_folder='templates')
@@ -19,7 +21,27 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+DAILY_LIMIT = 15
+_usage = {}  # {(visitor_id, iso_date): count}  -- move to a DB later
 
+def get_visitor_id():
+    return request.cookies.get("nino_vid") or request.remote_addr or "unknown"
+
+def within_daily_limit(visitor_id):
+    key = (visitor_id, date.today().isoformat())
+    count = _usage.get(key, 0)
+    if count >= DAILY_LIMIT:
+        return False
+    _usage[key] = count + 1
+    return True
+
+def get_api_key():
+    """Returns (key, is_owner_key). A user's own key bypasses the daily limit."""
+    user_key = (request.headers.get("X-User-Key") or "").strip()
+    if user_key:
+        return user_key, False
+    return os.environ.get("GEMINI_API_KEY"), True
+    
 CUTOFF_MESSAGE = "That test got cut off while I was generating it. Ask me again and I'll rebuild it."
 
 
@@ -201,23 +223,18 @@ session_store = SessionManager()
 session_store.migrate_legacy_history()
 
 
-def call_genai_with_fallback(contents, system_instruction, temperature=0.7):
-    """
-    Handles API orchestration with explicit token limits and model fallbacks.
-    """
-    api_key = os.environ.get("GEMINI_API_KEY")
+def call_genai_with_fallback(contents, system_instruction, api_key, temperature=0.7):
     if not api_key:
-        return "Initialization Error: GEMINI_API_KEY environment variable is not set."
+        return "Nino isn't configured yet. Please add a Gemini key in Settings or try later."
 
     try:
         client = genai.Client(api_key=api_key)
     except Exception as e:
-        return f"Initialization Error: {str(e)}"
+        print(f"[Gemini init ERROR]: {e}")
+        return "Nino couldn't start the AI service. Please try again later."
 
-    models = [
-        "gemini-3.1-flash-lite",
-        "gemini-3.6-flash"
-    ]
+    models = ["gemini-3.1-flash-lite", "gemini-3.6-flash"]
+    last_error = None
 
     for model in models:
         try:
@@ -230,23 +247,19 @@ def call_genai_with_fallback(contents, system_instruction, temperature=0.7):
                     max_output_tokens=4096
                 )
             )
-            
             if response and response.text:
                 return response.text
-            
         except Exception as e:
-            error_str = str(e)
-            print(f"[Gemini Model ERROR - {model}]: {error_str}")
+            last_error = str(e)
+            # Never print the key itself; the error text can be logged
+            print(f"[Gemini ERROR - {model}]: {last_error[:300]}")
 
-            if "rate_limit" in error_str.lower() or "429" in error_str:
-                continue
-            elif model == models[0]:
-                continue
-
-    return "Token limit reached please try after somme time."
+    if last_error and ("429" in last_error or "quota" in last_error.lower()):
+        return "Nino is very busy right now (daily AI quota reached). Please try again later, or add your own Gemini key in Settings."
+    return "Nino couldn't answer that just now. Please try again in a moment."
 
 
-def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file_bytes=None, mime_type=None):
+def ask_ai(prompt, current_progress, user_goal, user_name, message_history, api_key, file_bytes=None, mime_type=None):
     system_instructions = """You are **Nino**, an AI companion built by **Mayank** to give IIT-JEE aspirants a free, judgment-free space to work through academic pressure, doubts, and burnout — while also functioning as a sharp JEE tutor who can generate practice tests and solve doubts.
    
     For introduction only like if the user just say "hi" or something so try to introduce yourself in the short way like max 2 or 3 lines only.
@@ -480,16 +493,16 @@ def ask_ai(prompt, current_progress, user_goal, user_name, message_history, file
     )
 
     return call_genai_with_fallback(
-        contents=formatted_contents, 
-        system_instruction=system_instructions, 
+        contents=formatted_contents,
+        system_instruction=system_instructions,
+        api_key=api_key,
         temperature=0.7
     )
 
-
 def send_log_to_discord(name, user_goal, current_pct, user_asked, ai_answered):
-    webhook_url = os.environ.get(
-        "DISCORD_WEBHOOK_URL", 
-        "https://discord.com/api/webhooks/1566417156021682270/PMVFXBRAlGJ2rcZgENzQlwcKa_Sr7THUspK-joWl_Xdr989S5WgrjtC6RI-f5fgnIiCc"
+    webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
+    if not webhook_url:
+        return 
     )
     
     short_ai_response = ai_answered[:800] + "..." if len(ai_answered) > 800 else ai_answered
@@ -512,7 +525,10 @@ def send_log_to_discord(name, user_goal, current_pct, user_asked, ai_answered):
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    resp = make_response(render_template('index.html'))
+    if not request.cookies.get("nino_vid"):
+        resp.set_cookie("nino_vid", os.urandom(12).hex(), max_age=60*60*24*365, samesite="Lax", secure=True, httponly=True)
+    return resp
 
 
 @app.route('/api/health', methods=['GET'])
@@ -631,6 +647,16 @@ def guide():
         current_state = session_store.update_goal(name, interest)
         user_prompt = followup if followup else f"Guide me for {current_state['goal']}"
 
+        api_key, is_owner_key = get_api_key()
+        if is_owner_key and not within_daily_limit(get_visitor_id()):
+            return jsonify({
+                "response": "You've used today's free messages. Come back tomorrow, or add your own Gemini key in Settings to keep going.",
+                "progress": current_state_pct_placeholder if False else 0,
+                "isTestTrigger": False,
+                "testTitle": "",
+                "questions": []
+            }), 429
+
         # The model keeps seeing its own original turns (incl. the JSON it produced);
         # the student only ever sees the friendly "content" version.
         model_history = [
@@ -644,6 +670,7 @@ def guide():
             user_goal=current_state["goal"],
             user_name=name,
             message_history=model_history,
+            api_key=api_key,
             file_bytes=file_bytes,
             mime_type=mime_type
         )
