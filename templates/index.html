@@ -14,11 +14,6 @@
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
 <style>
-/* ============================================================
-   TOKENS — "Liquid Glass": translucent layers floating over a
-   living colour field. Apple's materials, Android-friendly input
-   (ripples, big touch targets, edge-to-edge, no hover dependence).
-   ============================================================ */
 @property --ang { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
 
 :root {
@@ -37,7 +32,7 @@
   --glass-hover: rgba(255,255,255,.13);
   --glass-strong: rgba(255,255,255,.12);
   --glass-border: rgba(255,255,255,.16);
-  --glass-hi: rgba(255,255,255,.38);        /* top specular edge */
+  --glass-hi: rgba(255,255,255,.38);
   --glass-shadow: 0 8px 32px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.2);
   --glass-blur: blur(28px) saturate(190%);
   --sep: rgba(255,255,255,.1);
@@ -78,7 +73,6 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 .hidden { display: none !important; }
 .icon { width: 1em; height: 1em; display: inline-block; vertical-align: -0.125em; flex-shrink: 0; }
 
-/* ---------- Living colour field (gives the glass something to refract) ---------- */
 #aurora { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
 #aurora i { position: absolute; border-radius: 50%; filter: blur(80px); opacity: var(--blob-op); will-change: transform; }
 #aurora i:nth-child(1) { width: 55vmax; height: 55vmax; background: var(--blob-a); top: -20vmax; left: -15vmax; animation: drift1 26s ease-in-out infinite alternate; }
@@ -90,9 +84,6 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 @keyframes drift3 { to { transform: translate(-22vmax, 10vmax) scale(1.2); } }
 @media (prefers-reduced-motion: reduce) { #aurora i { animation: none; } }
 
-/* ============================================================
-   GLASS MATERIAL
-   ============================================================ */
 .glass {
   position: relative;
   background: var(--glass);
@@ -101,13 +92,11 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
   box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-hi), inset 0 -1px 0 rgba(255,255,255,.04);
   transition: background .25s ease, transform .35s var(--spring), box-shadow .3s ease, border-color .3s ease;
 }
-/* specular edge sheen */
 .glass::before {
   content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
   background: linear-gradient(135deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 38%, rgba(255,255,255,0) 70%, rgba(255,255,255,.1) 100%);
   opacity: .7;
 }
-/* cursor-tracking light (hover only) */
 .glass::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
   background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 0%), rgba(255,255,255,.22), transparent 60%);
@@ -115,7 +104,6 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 }
 @media (hover: hover) { .glass:hover::after { opacity: 1; } }
 
-/* Interactive glass controls — hover + press states */
 .gbtn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-border);
@@ -131,16 +119,11 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 .gbtn:focus-visible, button:focus-visible, textarea:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .circle { width: 44px; height: 44px; font-size: 19px; }
 
-/* Material-style touch ripple (the "Apple on Android" touch) */
 .ripple { position: absolute; border-radius: 50%; pointer-events: none; background: rgba(255,255,255,.35); transform: scale(0); animation: rip .6s ease-out forwards; }
 @keyframes rip { to { transform: scale(1); opacity: 0; } }
 
-/* ============================================================
-   LAYOUT — floating panels with gutters
-   ============================================================ */
 #app { position: relative; z-index: 1; display: flex; gap: 12px; height: 100dvh; padding: calc(12px + var(--safe-t)) 12px calc(12px + var(--safe-b)); }
 
-/* Sidebar */
 #sidebar {
   width: 290px; flex-shrink: 0; display: flex; flex-direction: column; border-radius: var(--r-lg); overflow: hidden; z-index: 40;
 }
@@ -178,11 +161,9 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 #backdrop { position: fixed; inset: 0; z-index: 35; background: rgba(0,0,0,.45); opacity: 0; pointer-events: none; transition: opacity .4s var(--spring); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
 #backdrop.show { opacity: 1; pointer-events: auto; }
 
-/* Main column */
 #split { flex: 1; display: flex; min-width: 0; gap: 12px; }
 #chat-section { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; border-radius: var(--r-lg); }
 
-/* Floating top bar */
 #navbar {
   position: absolute; top: 12px; left: 12px; right: 12px; z-index: 20; height: 56px; border-radius: 999px;
   display: flex; align-items: center; justify-content: space-between; padding: 6px;
@@ -194,7 +175,6 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 .nav-center span { font-size: 11px; color: var(--label-2); }
 .mode-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-right: 5px; box-shadow: 0 0 8px var(--green); vertical-align: 1px; }
 
-/* Welcome */
 #welcome { flex: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 90px 20px 12px; text-align: center; }
 .hello {
   font-size: clamp(40px, 7vw, 68px); font-weight: 800; letter-spacing: -0.045em; line-height: 1.05;
@@ -204,16 +184,8 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 }
 @keyframes hue { to { background-position: 100% 0; } }
 .sub { color: var(--label-2); font-size: 18px; margin-top: 10px; max-width: 420px; animation: rise .8s .1s var(--spring) both; }
-.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 34px; width: 100%; max-width: 560px; animation: rise .8s .2s var(--spring) both; }
-.card { border-radius: var(--r-md); padding: 16px; text-align: left; display: flex; flex-direction: column; gap: 10px; overflow: hidden; cursor: pointer; }
-@media (hover: hover) { .card:hover { transform: translateY(-4px) scale(1.015); background: var(--glass-hover); box-shadow: 0 18px 40px rgba(0,0,0,.3), inset 0 1px 0 var(--glass-hi); } }
-.card:active { transform: scale(.97); }
-.card .ci { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 19px; color: #fff; position: relative; z-index: 1; }
-.card h4 { font-size: 15px; font-weight: 650; position: relative; z-index: 1; }
-.card p { font-size: 13px; color: var(--label-2); margin-top: -6px; position: relative; z-index: 1; }
 @keyframes rise { from { transform: translateY(18px); opacity: 0 } to { transform: none; opacity: 1 } }
 
-/* Conversation — AI text is un-bubbled (Apple Intelligence style), user is a glass pill */
 #chat-window { flex: 1; overflow-y: auto; padding: 90px 20px 20px; width: 100%; max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; scroll-behavior: smooth; scrollbar-width: thin; scrollbar-color: var(--glass-border) transparent; }
 .msg { display: flex; width: 100%; animation: msgIn .5s var(--spring) both; }
 .msg.history { animation: none; }
@@ -248,7 +220,6 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 .shimmer { background: linear-gradient(90deg, var(--label-3), var(--label), var(--label-3)); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shim 1.6s linear infinite; }
 @keyframes shim { to { background-position: -200% 0; } }
 
-/* Composer — floating glass capsule with Apple-Intelligence glow */
 #composer { flex-shrink: 0; width: 100%; max-width: 800px; margin: 0 auto; padding: 0 12px 12px; position: relative; }
 #file-preview { margin: 0 8px 10px; border-radius: var(--r-md); padding: 8px 8px 8px 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; animation: rise .4s var(--spring); }
 #file-preview .fi { display: flex; align-items: center; gap: 10px; overflow: hidden; position: relative; z-index: 1; }
@@ -267,7 +238,6 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 @keyframes spin { to { --ang: 360deg; } }
 .field { position: relative; z-index: 1; display: flex; align-items: flex-end; gap: 6px; border-radius: 30px; padding: 7px; background: rgba(20,20,30,.72); }
 @media (prefers-color-scheme: light) { .field { background: rgba(255,255,255,.86); } }
-.field::before { display: none; }
 #user-input { flex: 1; background: none; border: 0; outline: 0; resize: none; font-size: 16.5px; line-height: 1.4; padding: 10px 6px; max-height: 140px; position: relative; z-index: 2; }
 #user-input::placeholder { color: var(--label-3); }
 .plus-btn { width: 42px; height: 42px; font-size: 18px; box-shadow: none; position: relative; z-index: 2; }
@@ -277,10 +247,6 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 #send-btn.off { opacity: .35; pointer-events: none; transform: scale(.88); filter: saturate(.3); }
 .disclaimer { text-align: center; font-size: 11.5px; color: var(--label-3); margin-top: 8px; }
 
-/* ============================================================
-   TEST SANDBOX
-   ============================================================ */
-/* ---------- Quick-tests launcher: one pill that unfolds on hover ---------- */
 .launcher-row { display: flex; padding: 0 8px 10px; }
 .launcher { display: inline-flex; align-items: center; max-width: 100%; min-width: 0; border-radius: 999px; padding: 4px; transition: background .5s ease, box-shadow .8s var(--spring), transform .6s var(--spring); }
 .launcher.open { background: var(--glass-strong); box-shadow: 0 14px 40px rgba(0,0,0,.28), inset 0 1px 0 var(--glass-hi); }
@@ -360,7 +326,6 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 .link-btn { color: var(--label-2); font-size: 14px; padding: 8px 14px; border-radius: 999px; transition: background .2s, color .2s; }
 @media (hover: hover) { .link-btn:hover { background: var(--glass-hover); color: var(--label); } }
 
-/* Segmented control (glass) */
 .seg { display: flex; padding: 4px; border-radius: 999px; background: rgba(0,0,0,.18); border: 1px solid var(--glass-border); gap: 2px; }
 @media (prefers-color-scheme: light) { .seg { background: rgba(255,255,255,.4); } }
 .seg button { flex: 1; padding: 8px 6px; font-size: 13px; font-weight: 600; border-radius: 999px; color: var(--label-2); transition: background .25s, color .25s, box-shadow .25s, transform .3s var(--spring); }
@@ -368,9 +333,6 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 .seg button.on { background: var(--glass-strong); color: var(--label); box-shadow: 0 2px 10px rgba(0,0,0,.2), inset 0 1px 0 var(--glass-hi); border: 0; }
 @media (prefers-color-scheme: dark) { .seg button.on { background: rgba(255,255,255,.2); } }
 
-/* ============================================================
-   MODALS
-   ============================================================ */
 .modal { position: fixed; inset: 0; z-index: 200; display: flex; align-items: flex-end; justify-content: center; background: rgba(0,0,0,0); pointer-events: none; transition: background .4s var(--spring), backdrop-filter .4s; padding: 12px calc(12px) calc(12px + var(--safe-b)); }
 .modal.show { background: rgba(0,0,0,.5); pointer-events: auto; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .modal-sheet { width: 100%; max-width: 460px; border-radius: 32px; transform: translateY(110%); transition: transform .55s var(--spring); max-height: 92dvh; overflow-y: auto; background: var(--glass); }
@@ -393,6 +355,7 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 .footer-note { font-size: 13px; color: var(--label-2); padding: 4px 6px 0; }
 .btn-save { margin-top: 18px; }
 .btn-save.ok { background: linear-gradient(135deg, #30D158, #28B84C); }
+.key-input { width: 100%; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--glass-border); background: var(--glass); color: var(--label); font: inherit; outline: 0; }
 
 #return-btn { position: fixed; top: calc(var(--safe-t) + 80px); left: 50%; transform: translateX(-50%); z-index: 60; padding: 11px 20px; font-weight: 700; font-size: 14px; color: #fff; background: linear-gradient(135deg, rgba(48,209,88,.8), rgba(40,184,76,.8)); border-color: rgba(255,255,255,.4); }
 @media (hover: hover) { #return-btn:hover { transform: translateX(-50%) translateY(-2px) scale(1.04); } }
@@ -402,9 +365,6 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 #splash .logo { width: 88px; height: 88px; border-radius: 28px; font-size: 44px; animation: pop .9s var(--spring) both; }
 @keyframes pop { from { transform: scale(.5) rotate(-12deg); opacity: 0 } to { transform: none; opacity: 1 } }
 
-/* ============================================================
-   RESPONSIVE — phones get sheets & overlay drawer
-   ============================================================ */
 @media (max-width: 767px) {
   #app { padding: calc(8px + var(--safe-t)) 8px calc(8px + var(--safe-b)); gap: 0; }
   #sidebar { position: fixed; top: calc(8px + var(--safe-t)); bottom: calc(8px + var(--safe-b)); left: 8px; width: min(86vw, 320px); transform: translateX(-115%); transition: transform .55s var(--spring); }
@@ -414,7 +374,6 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
   #navbar { top: 8px; left: 8px; right: 8px; }
   #chat-window { padding: 82px 14px 16px; }
   #welcome { padding-top: 84px; }
-  .cards { grid-template-columns: 1fr; margin-top: 26px; }
   .msg.user .bubble { max-width: 88%; }
   #composer { padding: 0 4px 4px; }
   #slider { display: none !important; }
@@ -424,9 +383,6 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 }
 @media (min-width: 768px) { #backdrop { display: none; } }
 
-/* ============================================================
-   V3 — TEST PANEL: calm background, true full-screen on mobile
-   ============================================================ */
 #test-section {
   --test-bg: rgba(12,12,18,.93);
   --glass: rgba(255,255,255,.045);
@@ -450,7 +406,7 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
     --sep: rgba(30,30,60,.08);
   }
 }
-#test-section::before { opacity: .15; }            /* much softer sheen */
+#test-section::before { opacity: .15; }
 #test-section .q-card, #test-section .report-card, #test-section .opt { box-shadow: none; }
 #test-section .q-card, #test-section .report-card { background: var(--glass); }
 #configurator { background: var(--test-bg); -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px); }
@@ -470,12 +426,11 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
   #test-section .sheet-head { padding-top: var(--safe-t); }
   #test-section .sheet-foot { padding-bottom: calc(12px + var(--safe-b)); }
   #test-viewport { padding: 14px 12px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
-  .q-top { flex-direction: column; gap: 10px; }          /* Explain button no longer squeezes the question */
+  .q-top { flex-direction: column; gap: 10px; }
   .q-top .explain-btn { align-self: flex-start; order: 2; }
   .sheet-bar { padding: 0 10px; height: 56px; }
 }
 
-/* Test card shown in chat instead of raw JSON */
 .test-card { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 12px 14px; border-radius: 20px; max-width: 420px; }
 .tc-ic { width: 40px; height: 40px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 19px; color: #fff; background: linear-gradient(135deg,#0A84FF,#7D7AFF); position: relative; z-index: 1; flex-shrink: 0; }
 .tc-t { flex: 1; min-width: 0; position: relative; z-index: 1; }
@@ -492,7 +447,6 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 <div id="app">
   <div id="backdrop" onclick="toggleMenu()"></div>
 
-  <!-- ============ SIDEBAR ============ -->
   <aside id="sidebar" class="glass">
     <div class="sb-head">
       <div class="brand"><span class="logo"><svg class="icon" data-icon="sparkle"></svg></span>Nino</div>
@@ -507,7 +461,6 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
   </aside>
 
   <div id="split">
-    <!-- ============ CHAT ============ -->
     <section id="chat-section">
       <header id="navbar" class="glass">
         <button id="menu-btn" class="gbtn nav-btn" onclick="toggleMenu()" aria-label="Menu"><svg class="icon" data-icon="sidebar"></svg></button>
@@ -519,7 +472,7 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
       <div id="welcome">
         <h1 class="hello">Hey, Aspirant.</h1>
         <p class="sub">What are we cracking today? Ask anything, or open <b style="color:var(--label)">Quick tests</b> below.</p>
-</div>
+      </div>
 
       <div id="chat-window" class="hidden"></div>
 
@@ -552,7 +505,6 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
 
     <div id="slider" class="hidden"></div>
 
-    <!-- ============ SANDBOX ============ -->
     <section id="test-section" class="glass">
       <div id="configurator">
         <div class="cfg-icon"><svg class="icon" data-icon="slider"></svg></div>
@@ -595,7 +547,6 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
   </div>
 </div>
 
-<!-- ============ PROFILE ============ -->
 <div id="profile-modal" class="modal" onclick="closeModal('profile-modal')">
   <div class="modal-sheet glass" onclick="event.stopPropagation()">
     <div class="grabber"></div>
@@ -614,7 +565,6 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
   </div>
 </div>
 
-<!-- ============ SETTINGS ============ -->
 <div id="settings-modal" class="modal" onclick="closeModal('settings-modal')">
   <div class="modal-sheet glass" onclick="event.stopPropagation()">
     <div class="grabber"></div>
@@ -627,15 +577,17 @@ textarea { font: inherit; color: inherit; letter-spacing: inherit; }
         <button data-v="supportive" onclick="pickSeg('seg-persona',this)">Supportive</button>
       </div>
       <p class="footer-note" id="persona-note" style="margin-top:10px">Balances empathy and logic.</p>
+
+      <div class="group-label" style="margin-top:18px">Your own Gemini key (optional)</div>
+      <input id="user-key-input" class="key-input" type="password" autocomplete="off" placeholder="Paste your key (stays in this browser)">
+      <p class="footer-note">Used only for your requests. Stored in this browser only, never on our server. Leave empty to use Nino's shared quota.</p>
+
       <button id="save-settings-btn" class="gbtn btn-primary btn-save" onclick="saveSettings()">Save</button>
     </div>
   </div>
 </div>
 
 <script>
-/* ============================================================
-   ICONS
-   ============================================================ */
 const ICONS = {
   sparkle: '<path d="M12 2.500l2.300 6.200 6.200 2.300-6.200 2.300L12 19.500l-2.300-6.200-6.200-2.300 6.200-2.300z" fill="currentColor"/><path d="M19 15.500l.8 2.200 2.200.8-2.200.8-.8 2.200-.8-2.200-2.200-.8 2.200-.8z" fill="currentColor"/>',
   xmark: '<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/>',
@@ -665,9 +617,6 @@ function hydrateIcons(root = document) {
 }
 hydrateIcons();
 
-/* ============================================================
-   GLASS INTERACTIONS: cursor light + touch ripple
-   ============================================================ */
 document.addEventListener('pointermove', e => {
   const g = e.target.closest && e.target.closest('.glass');
   if (!g) return;
@@ -690,13 +639,12 @@ document.addEventListener('pointerdown', e => {
   if (navigator.vibrate) navigator.vibrate(6);
 }, { passive: true });
 
-/* ============================================================
-   STATE
-   ============================================================ */
 let selectedFileObject = null, examinationActive = false, isReviewMode = false;
 let verificationQuestions = [], currentTopicContext = "General Practice";
 let examCountdownInterval = null, timeRemainingSeconds = 0;
 let currentChatId = null, chatSessions = [];
+
+const USER_KEY_STORAGE = 'nino_user_key';
 
 const $ = id => document.getElementById(id);
 const chat = $('chat-window'), input = $('user-input'), sendBtn = $('send-btn');
@@ -729,9 +677,6 @@ window.addEventListener('DOMContentLoaded', () => {
   updateSendState();
 });
 
-/* ============================================================
-   HISTORY
-   ============================================================ */
 function loadSidebarChats() {
   try { chatSessions = JSON.parse(localStorage.getItem('helper_buddy_chats') || '[]'); } catch { chatSessions = []; }
   renderSidebarList();
@@ -790,9 +735,6 @@ function startNewChat() {
   renderSidebarList();
 }
 
-/* ============================================================
-   MODALS
-   ============================================================ */
 const openModal = id => requestAnimationFrame(() => $(id).classList.add('show'));
 const closeModal = id => $(id).classList.remove('show');
 
@@ -818,17 +760,22 @@ async function openProfile() {
     setTimeout(() => { $('profile-progress-bar').style.width = d.progress + "%"; }, 150);
   } catch { $('profile-name').textContent = 'Offline'; $('profile-goal').textContent = "Connection error"; }
 }
+
 async function openSettings() {
   openModal('settings-modal');
+  $('user-key-input').value = localStorage.getItem(USER_KEY_STORAGE) || '';
   try {
     const r = await fetch(`/api/settings?name=${encodeURIComponent(currentChatId || "Anonymous")}`);
     const d = await r.json();
     if (d.settings && d.settings.mode) setSeg('seg-persona', d.settings.mode);
   } catch {}
 }
+
 async function saveSettings() {
   const btn = $('save-settings-btn'), orig = btn.textContent;
   btn.textContent = 'Saving…';
+  const k = $('user-key-input').value.trim();
+  k ? localStorage.setItem(USER_KEY_STORAGE, k) : localStorage.removeItem(USER_KEY_STORAGE);
   try {
     await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: currentChatId || "Anonymous", settings: { mode: segValue('seg-persona') } }) });
     btn.textContent = '✓ Saved'; btn.classList.add('ok');
@@ -836,9 +783,6 @@ async function saveSettings() {
   } catch { btn.textContent = 'Couldn’t save'; setTimeout(() => { btn.textContent = orig; }, 1800); }
 }
 
-/* ============================================================
-   UI HELPERS
-   ============================================================ */
 function toggleMenu() { const o = sidebar.classList.toggle('open'); backdrop.classList.toggle('show', o); }
 function useSuggestion(t) { input.value = t; send(); }
 function triggerFilePicker() { fileUploader.click(); }
@@ -854,7 +798,6 @@ function updateSendState() { sendBtn.classList.toggle('off', !input.value.trim()
 function autoGrow() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 140) + 'px'; }
 function editMessage(btn) { input.value = decodeURIComponent(btn.getAttribute('data-raw')); autoGrow(); updateSendState(); input.focus(); }
 
-/* ---- Raw test JSON saved in history -> clean "Open test" card ---- */
 const testStash = {}; let stashN = 0;
 function extractTestPayload(text) {
   if (typeof text !== 'string') return null;
@@ -893,7 +836,7 @@ function addMessage(text, sender, isHistoryLoad = false, imageUrl = null, testOb
   const payload = sender === 'ai'
     ? ((testObj && Array.isArray(testObj.questions) && testObj.questions.length)
         ? { count: testObj.questions.length, questions: testObj.questions, message: text, title: testObj.title || '' }
-        : extractTestPayload(text))   // fallback for chats saved before the backend fix
+        : extractTestPayload(text))
     : null;
   if (payload) {
     const id = 't' + (++stashN); testStash[id] = payload;
@@ -922,9 +865,6 @@ function addMessage(text, sender, isHistoryLoad = false, imageUrl = null, testOb
   if (!isHistoryLoad) setTimeout(() => { chat.scrollTop = chat.scrollHeight; }, 20);
 }
 
-/* ============================================================
-   SPLIT VIEW
-   ============================================================ */
 function initializeDraggableResizer() {
   let drag = false;
   slider.addEventListener('mousedown', () => { drag = true; slider.classList.add('dragging'); document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; });
@@ -937,9 +877,6 @@ function initializeDraggableResizer() {
 }
 function setSplitView(chatPct) { if (isMobile()) { testSection.style.width = ''; return; } testSection.style.width = `calc(${100 - chatPct}% - 6px)`; }
 
-/* ============================================================
-   TEST SANDBOX
-   ============================================================ */
 function openTestingInterface(topic) {
   examinationActive = true; isReviewMode = false;
   currentTopicContext = topic || "IIT-JEE Practice";
@@ -1078,12 +1015,6 @@ function renderMistakeAnalysisDashboard(accurate, mistakes) {
   renderVerificationQuestions();
 }
 
-/* ============================================================
-   SEND
-   ============================================================ */
-/* ============================================================
-   QUICK-TESTS LAUNCHER
-   ============================================================ */
 const TESTS = [
   { subj: 'Physics',   name: 'Mechanics', icon: 'atom',  bg: 'linear-gradient(135deg,#FF9F0A,#FF375F)', prompt: 'Generate a mock test for Physics Mechanics' },
   { subj: 'Physics',   name: 'Magnetism', icon: 'bolt',  bg: 'linear-gradient(135deg,#FF375F,#BF5AF2)', prompt: 'Generate a mock test for Physics Magnetism' },
@@ -1157,7 +1088,12 @@ async function send() {
     fd.append("interest", text || "General Study Optimization");
     fd.append("followup", text);
     if (file) fd.append("file", file);
-    const res = await fetch("/guide", { method: "POST", body: fd });
+
+    const headers = {};
+    const userKey = localStorage.getItem(USER_KEY_STORAGE);
+    if (userKey) headers['X-User-Key'] = userKey;
+
+    const res = await fetch("/guide", { method: "POST", body: fd, headers });
     const data = await res.json();
     $(tId)?.remove();
 
@@ -1169,7 +1105,9 @@ async function send() {
       addMessage(data.chatResponse || data.ChatResponse || "I've opened your practice test.", "ai", false, null, { title, questions: qs });
       verificationQuestions = qs.map(q => ({ ...q, selectedAnswer: null, mistakeType: normMistake(q.mistakeType) }));
       openTestingInterface(title);
-    } else addMessage(data.response || data.chatResponse || data.ChatResponse, "ai");
+    } else {
+      addMessage(data.response || data.chatResponse || data.ChatResponse || "Nino couldn't answer that just now. Please try again.", "ai");
+    }
   } catch {
     $(tId)?.remove();
     addMessage("### Connection problem\n\nCouldn't reach Nino. Check your connection and try again.", "ai");
@@ -1182,7 +1120,7 @@ input.addEventListener('input', () => { autoGrow(); updateSendState(); });
 let lastW = window.innerWidth;
 window.addEventListener('resize', () => {
   const w = window.innerWidth;
-  if (w === lastW) return;                 // height-only change = mobile keyboard; do nothing
+  if (w === lastW) return;
   const wasMobile = lastW < 768; lastW = w;
   if (!(examinationActive || isReviewMode)) return;
   $('to-chat-btn').classList.toggle('hidden', !isMobile());
