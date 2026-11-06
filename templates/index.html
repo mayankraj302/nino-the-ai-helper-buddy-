@@ -279,6 +279,20 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
 .field{padding:6px}
 }
 @media(max-width:767px) and (prefers-color-scheme:dark){:root{--bo:.32}}
+/* ---- Feedback ---- */
+.fb-stars{display:flex;gap:4px;justify-content:center;margin:2px 0 16px}
+.fb-star{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:26px;color:var(--dm);transition:transform .35s var(--ease),color .2s}
+.fb-star:active{transform:scale(.85)}
+.fb-star.on{color:var(--org);transform:scale(1.08)}
+#seg-fb button{font-size:12.5px}
+.fb-text{width:100%;min-height:120px;padding:14px 16px;border-radius:22px;border:1px solid var(--gb);background:var(--gl);color:var(--tx);font:inherit;font-size:16px;line-height:1.5;outline:0;resize:none;display:block}
+.fb-text:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(10,132,255,.18)}
+.fb-ctx{display:flex;gap:8px;align-items:flex-start;margin-bottom:12px;padding:10px 14px;border-radius:18px;font-size:13px;color:var(--mu);background:var(--gl);border:1px solid var(--gb)}
+.fb-ctx b{color:var(--tx);font-weight:600;white-space:nowrap}
+.fb-err{min-height:18px;margin-top:8px;padding-left:6px;font-size:13px;color:var(--red)}
+.fb-report{display:inline-flex;align-items:center;gap:6px;margin-top:10px;min-height:34px;padding:0 12px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--dm);border:1px solid var(--ln);transition:color .2s,background .2s,transform .3s var(--ease)}
+.fb-report:active{transform:scale(.94)}
+@media(hover:hover){.fb-report:hover{color:var(--tx);background:var(--gl2)}}
 </style>
 </head>
 <body class="home"><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="nino-logo" viewBox="0 0 40 40"><defs><linearGradient id="nl-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b9bff"/><stop offset="1" stop-color="#1fcfb8"/></linearGradient><linearGradient id="nl-h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><rect width="40" height="40" rx="12" fill="url(#nl-g)"/><rect width="40" height="40" rx="12" fill="url(#nl-h)"/><ellipse cx="20" cy="20" rx="13.5" ry="5.4" transform="rotate(-32 20 20)" fill="none" stroke="#fff" stroke-opacity=".92" stroke-width="2.2"/><circle cx="20" cy="20" r="3.7" fill="#fff"/><path d="M31 8.2l1.35 3.45 3.45 1.35-3.45 1.35L31 17.8l-1.35-3.45L26.2 13l3.45-1.35z" fill="#fff"/></symbol></defs></svg>
@@ -293,6 +307,7 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
     <div id="history"></div>
     <div class="sb-foot">
       <button class="sb-item" onclick="openProfile()"><span class="ic" style="background:linear-gradient(135deg,#7d7aff,#5856d6)"><svg class="icon" data-icon="person"></svg></span>My profile</button>
+      <button class="sb-item" onclick="openFeedback('bug')"><span class="ic" style="background:linear-gradient(135deg,#ff9f0a,#ff6a00)"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4M6 5h11l-2.500 4L17 13H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Send feedback</button>
       <button class="sb-item" onclick="openSettings()"><span class="ic" style="background:linear-gradient(135deg,#98989d,#636366)"><svg class="icon" data-icon="gear"></svg></span>Settings</button>
     </div>
   </aside>
@@ -378,6 +393,25 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
     <input id="user-key-input" class="key-input" type="password" autocomplete="off" placeholder="Paste your key">
     <p class="note">Stored only in this browser, never on our server. Leave empty to use Nino's shared quota.</p>
     <button id="save-settings-btn" class="btn red btn-save" onclick="saveSettings()">Save settings</button></div>
+</div></div>
+<div id="feedback-modal" class="modal" onclick="closeModal('feedback-modal')"><div class="modal-sheet" onclick="event.stopPropagation()">
+  <div class="modal-nav"><span style="width:70px"></span><b>Feedback</b><button class="btn sm" onclick="closeModal('feedback-modal')">Cancel</button></div>
+  <div class="modal-body">
+    <div class="gl" style="padding-top:4px">What is this about?</div>
+    <div class="seg" id="seg-fb">
+      <button data-v="bug" class="on" onclick="pickFb(this)">Bug</button>
+      <button data-v="wrong_answer" onclick="pickFb(this)">Wrong answer</button>
+      <button data-v="idea" onclick="pickFb(this)">Idea</button>
+      <button data-v="other" onclick="pickFb(this)">Other</button>
+    </div>
+    <div class="gl" style="margin-top:6px">How is Nino for you?</div>
+    <div class="fb-stars" id="fb-stars" role="radiogroup" aria-label="Rating"></div>
+    <div class="fb-ctx hidden" id="fb-ctx"><b>About:</b><span id="fb-ctx-text"></span></div>
+    <textarea id="fb-text" class="fb-text" maxlength="1500" placeholder="What should we fix?"></textarea>
+    <div class="fb-err" id="fb-err" role="alert"></div>
+    <button id="fb-send" class="btn red btn-save" style="margin-top:8px" onclick="submitFeedback()">Send feedback</button>
+    <p class="note" style="text-align:center;margin-top:10px">We read every message. Your chat id is attached so we can find the problem.</p>
+  </div>
 </div></div>
 <script>
 const LOGO='<svg viewBox="0 0 40 40" aria-hidden="true"><use href="#nino-logo"/></svg>';
@@ -686,6 +720,58 @@ setTimeout(()=>{if(!isMobile()&&!document.querySelector('.modal.show')&&!$('welc
 autoGrow=function(){input.style.height='auto';const h=input.scrollHeight;input.style.height=Math.min(h,140)+'px';input.style.overflowY=h>140?'auto':'hidden'};
 if(isMobile()){PH.splice(0,PH.length,'Solve ∫ x·eˣ dx step by step','SN1 vs SN2, explained simply','Test me on Rotational Motion','Why do charges spiral in B?');input.placeholder=PH[0]}
 
+
+/* ---- Feedback ---- */
+const FEEDBACK_ENDPOINT='/api/feedback',FB_QUEUE='nino_feedback_queue';
+let fbRating=0,fbContext='';
+const FB_PH={bug:'What broke? What did you tap before it happened?',wrong_answer:'Which step or final answer is wrong, and what is the correct one?',idea:'What would make Nino more useful for your prep?',other:'Tell us anything.'};
+const FB_STAR='<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.500l2.600 5.400 5.900.8-4.300 4.100 1 5.900-5.200-2.800-5.200 2.800 1-5.900L3.500 9.700l5.900-.8z" fill="currentColor"/></svg>';
+$('fb-stars').innerHTML=[1,2,3,4,5].map(n=>`<button class="fb-star" role="radio" aria-label="${n} star${n>1?'s':''}" onclick="setFbRating(${n})">${FB_STAR}</button>`).join('');
+function setFbRating(n){fbRating=fbRating===n?0:n;document.querySelectorAll('.fb-star').forEach((b,i)=>{b.classList.toggle('on',i<fbRating);b.setAttribute('aria-checked',i<fbRating)})}
+function pickFb(btn){pickSeg('seg-fb',btn);$('fb-text').placeholder=FB_PH[btn.dataset.v]||FB_PH.other}
+function openFeedback(cat='bug',ctx=''){
+  fbContext=ctx;setSeg('seg-fb',cat);$('fb-text').placeholder=FB_PH[cat]||FB_PH.other;
+  $('fb-text').value='';$('fb-err').textContent='';setFbRating(0);fbRating=0;document.querySelectorAll('.fb-star').forEach(b=>b.classList.remove('on'));
+  $('fb-ctx').classList.toggle('hidden',!ctx);$('fb-ctx-text').textContent=ctx.slice(0,140)+(ctx.length>140?'…':'');
+  if(isMobile()&&sidebar.classList.contains('open'))toggleMenu();
+  openModal('feedback-modal');if(!isMobile())setTimeout(()=>$('fb-text').focus(),350);
+}
+const readFbQueue=()=>{try{return JSON.parse(localStorage.getItem(FB_QUEUE)||'[]')}catch{return[]}};
+async function postFeedback(p){
+  try{
+    const c=new AbortController(),t=setTimeout(()=>c.abort(),8000);
+    const r=await fetch(FEEDBACK_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p),signal:c.signal});
+    clearTimeout(t);return r.ok;
+  }catch{return false}
+}
+async function flushFeedbackQueue(){
+  const q=readFbQueue();if(!q.length)return;const left=[];
+  for(const p of q){if(!(await postFeedback(p)))left.push(p)}
+  try{left.length?localStorage.setItem(FB_QUEUE,JSON.stringify(left)):localStorage.removeItem(FB_QUEUE)}catch{}
+}
+async function submitFeedback(){
+  const msg=$('fb-text').value.trim();
+  if(msg.length<5&&!fbRating){$('fb-err').textContent='Tell us what to fix, or give a star rating.';return}
+  $('fb-err').textContent='';const btn=$('fb-send'),o=btn.textContent;btn.textContent='Sending…';btn.disabled=true;
+  const payload={name:currentChatId||'Anonymous',category:segValue('seg-fb'),rating:fbRating,message:msg,context:fbContext,page:location.href,theme:matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light',screen:innerWidth+'x'+innerHeight,time:new Date().toISOString()};
+  const sent=await postFeedback(payload);
+  if(!sent){const q=readFbQueue();q.push(payload);try{localStorage.setItem(FB_QUEUE,JSON.stringify(q.slice(-20)))}catch{}}
+  btn.textContent=sent?'Thanks, sent':'Saved. Will send when online';
+  setTimeout(()=>{closeModal('feedback-modal');btn.textContent=o;btn.disabled=false},1200);
+}
+/* "Report a problem" under every finished Nino answer (wrong solutions matter most in JEE) */
+new MutationObserver(()=>{
+  chat.querySelectorAll('.msg.ai:not([data-fb])').forEach(m=>{
+    const body=m.querySelector('.ai-text');if(!body||body.querySelector('.thinking'))return;m.dataset.fb='1';
+    const b=document.createElement('button');b.className='fb-report';b.type='button';
+    b.innerHTML='<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4M6 5h11l-2.500 4L17 13H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Report a problem';
+    b.onclick=()=>openFeedback('wrong_answer',(body.innerText||'').trim().replace(/\s+/g,' '));
+    const wrap=document.createElement('div');wrap.appendChild(b);body.appendChild(wrap);
+  });
+}).observe(chat,{childList:true});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal('feedback-modal')});
+window.addEventListener('online',flushFeedbackQueue);
+setTimeout(flushFeedbackQueue,3000);
 </script>
 </body>
 </html>
