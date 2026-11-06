@@ -382,7 +382,6 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
 <script>
 const LOGO='<svg viewBox="0 0 40 40" aria-hidden="true"><use href="#nino-logo"/></svg>';
 
-
 const ICONS={flame:'<path d="M12 2.500c.5 3-1.500 4.500-3 6.500-1.300 1.800-2 3.200-2 5.200a5 5 0 0010 0c0-2-.8-3.300-1.800-4.600.1 1.300-.5 2.200-1.400 2.600.6-3.300-.8-6.800-1.800-9.700z" fill="currentColor"/>',camera:'<path d="M4 8.500a2 2 0 012-2h1.800l1.200-2h6l1.200 2H18a2 2 0 012 2V17a2 2 0 01-2 2H6a2 2 0 01-2-2z" fill="none" stroke="currentColor" stroke-width="1.900" stroke-linejoin="round"/><circle cx="12" cy="12.800" r="3.200" fill="none" stroke="currentColor" stroke-width="1.900"/>',atom:'<circle cx="12" cy="12" r="1.800" fill="currentColor"/><ellipse cx="12" cy="12" rx="9" ry="3.800" fill="none" stroke="currentColor" stroke-width="1.700"/><ellipse cx="12" cy="12" rx="9" ry="3.800" transform="rotate(60 12 12)" fill="none" stroke="currentColor" stroke-width="1.700"/><ellipse cx="12" cy="12" rx="9" ry="3.800" transform="rotate(120 12 12)" fill="none" stroke="currentColor" stroke-width="1.700"/>',bolt:'<path d="M13 2.500L5 13.500h6l-1 8 8-11h-6z" fill="currentColor"/>',flask:'<path d="M9.500 3.500h5M10.500 3.500v6L5 19a1.500 1.500 0 001.300 2h11.400a1.500 1.500 0 001.300-2l-5.500-9.500v-6" fill="none" stroke="currentColor" stroke-width="1.900" stroke-linecap="round" stroke-linejoin="round"/>',sigma:'<path d="M18 5.500H6.500L12.500 12 6.500 18.500H18" stroke="currentColor" stroke-width="2.400" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
 xmark:'<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/>',
 compose:'<path d="M12 5H6.500A2.500 2.500 0 004 7.500v10A2.500 2.500 0 006.500 20h10a2.500 2.500 0 002.500-2.500V12" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"/><path d="M17.500 3.500a1.800 1.800 0 012.600 2.600L12 14.200l-3.400.8.800-3.400z" fill="currentColor"/>',
@@ -407,12 +406,14 @@ const USER_KEY_STORAGE='nino_user_key',$=id=>document.getElementById(id);
 const chat=$('chat-window'),input=$('user-input'),sendBtn=$('send-btn'),sidebar=$('sidebar'),backdrop=$('backdrop'),glow=$('glow'),fileUploader=$('file-uploader'),filePreview=$('file-preview'),historyEl=$('history'),splitContainer=$('split'),slider=$('slider'),testSection=$('test-section'),configurator=$('configurator'),viewport=$('test-viewport');
 const isMobile=()=>window.innerWidth<768;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const decodeHtmlEntities=s=>{if(!s)return'';const txt=document.createElement('textarea');txt.innerHTML=s;return txt.value;};
 marked.setOptions({breaks:true});
 $('nav-gap').style.display='none';
 
 function renderMathFormulas(t){
   if(typeof katex==='undefined')return t;
-  const o=t.replace(/\$\$([\s\S]+?)\$\$/g,(m,e)=>{try{return '<div style="margin:12px 0;overflow-x:auto;max-width:100%">'+katex.renderToString(e.trim(),{displayMode:true,throwOnError:false})+'</div>'}catch{return m}});
+  const cleaned=decodeHtmlEntities(t);
+  const o=cleaned.replace(/\$\$([\s\S]+?)\$\$/g,(m,e)=>{try{return '<div style="margin:12px 0;overflow-x:auto;max-width:100%">'+katex.renderToString(e.trim(),{displayMode:true,throwOnError:false})+'</div>'}catch{return m}});
   return o.replace(/\$([^\$\n]+?)\$/g,(m,e)=>{try{return katex.renderToString(e,{displayMode:false,throwOnError:false})}catch{return m}});
 }
 document.addEventListener('pointermove',e=>{const a=$('amb');a.style.setProperty('--px',(e.clientX/innerWidth*100)+'%');a.style.setProperty('--py',(e.clientY/innerHeight*100)+'%')},{passive:true});
@@ -564,7 +565,7 @@ function optionsHTML(q,qi){
   return q.options.map((opt,oi)=>{
     const sel=q.selectedAnswer===oi,right=q.correct===oi;let cls='opt',ic=String.fromCharCode(65+oi);
     if(isReviewMode){if(right){cls+=' right';ic=icon('check')}else if(sel){cls+=' wrong';ic=icon('xmark')}else cls+=' dim'}else if(sel)cls+=' sel';
-    return `<button class="${cls}" ${isReviewMode?'disabled':`onclick="recordTestAnswer(${qi},${oi})"`}><span class="lt">${ic}</span><span class="ot">${renderMathFormulas(esc(opt))}</span></button>`;
+    return `<button class="${cls}" ${isReviewMode?'disabled':`onclick="recordTestAnswer(${qi},${oi})"`}><span class="lt">${ic}</span><span class="ot">${renderMathFormulas(decodeHtmlEntities(opt))}</span></button>`;
   }).join('');
 }
 function renderVerificationQuestions(){
@@ -572,7 +573,8 @@ function renderVerificationQuestions(){
   verificationQuestions.forEach((q,i)=>{
     const c=document.createElement('div');c.className='q-card';c.style.animationDelay=`${i*60}ms`;
     const wrong=isReviewMode&&q.selectedAnswer!==q.correct;
-    c.innerHTML=`<div class="q-top"><div style="flex:1;min-width:0"><div class="q-tags"><span class="q-num">Q${q.id||i+1}</span>${wrong?`<span class="mt ${esc(q.mistakeType)}">${esc(q.mistakeType)} mistake</span>`:''}</div><div class="q-text">${renderMathFormulas(esc(q.question))}</div></div><button class="btn sm" onclick="requestRealtimeDoubtSupport(${q.id||i+1})">${icon('bulb')}Explain</button></div><div class="opts" id="q-options-${i}">${optionsHTML(q,i)}</div>`;
+    const cleanQuestion = renderMathFormulas(decodeHtmlEntities(q.question));
+    c.innerHTML=`<div class="q-top"><div style="flex:1;min-width:0"><div class="q-tags"><span class="q-num">Q${q.id||i+1}</span>${wrong?`<span class="mt ${esc(q.mistakeType)}">${esc(q.mistakeType)} mistake</span>`:''}</div><div class="q-text">${cleanQuestion}</div></div><button class="btn sm" onclick="requestRealtimeDoubtSupport(${q.id||i+1})">${icon('bulb')}Explain</button></div><div class="opts" id="q-options-${i}">${optionsHTML(q,i)}</div>`;
     viewport.appendChild(c);
   });
   if(!isReviewMode)updateTestCounter();
@@ -652,7 +654,6 @@ window.addEventListener('resize',()=>{
   else{slider.classList.remove('hidden');setSplitView(50);testSection.classList.remove('shown');$('return-btn')?.remove()}
 });
 
-
 /* ---- Welcome: subject picker, rotating prompts, hover spotlight ---- */
 function toggleSubjects(){$('subj').classList.toggle('open')}
 const PH=['Why does a charged particle move in a circle in a magnetic field?','Solve ∫ x·eˣ dx step by step','Explain SN1 vs SN2 like I’m 15','Give me a test on Rotational Motion'];
@@ -675,7 +676,6 @@ function refreshIsland(){
 [[glow,{attributes:true}],[configurator,{attributes:true}],[testSection,{attributes:true}],[$('countdown'),{childList:true,characterData:true,subtree:true}]]
   .forEach(([el,o])=>new MutationObserver(refreshIsland).observe(el,o));
 document.addEventListener('pointerdown',e=>{if(e.target.closest&&e.target.closest('button')&&navigator.vibrate)navigator.vibrate(6)},{passive:true});
-
 
 /* ---- v4: always open on the home screen; focus input on desktop; mark home state ---- */
 const _showWelcome=showWelcome;
