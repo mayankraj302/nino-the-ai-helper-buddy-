@@ -783,10 +783,6 @@ def home():
         resp.set_cookie("nino_vid", os.urandom(12).hex(), max_age=60 * 60 * 24 * 365, samesite="Lax", secure=True, httponly=True)
     return resp
 
-@app.route('/favicon.ico')
-def favicon():
-    return ('', 204)
-
 
 @app.route('/api/health', methods=['GET'])
 def health():
