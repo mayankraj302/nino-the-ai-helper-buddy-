@@ -5,7 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#060a17">
 <title>Nino · JEE doubts solved</title>
+
+<!-- Favicon + Shortcut Icon (Stops the /favicon.ico 404 warning) -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%235b9bff%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%231fcfb8%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%2240%22%20height%3D%2240%22%20rx%3D%2212%22%20fill%3D%22url%28%23g%29%22/%3E%3Cellipse%20cx%3D%2220%22%20cy%3D%2220%22%20rx%3D%2213.5%22%20ry%3D%225.4%22%20transform%3D%22rotate%28-32%2020%2020%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.2%22/%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2220%22%20r%3D%223.7%22%20fill%3D%22%23fff%22/%3E%3Cpath%20d%3D%22M31%208.2l1.35%203.45%203.45%201.35-3.45%201.35L31%2017.8l-1.35-3.45L26.2%2013l3.45-1.35z%22%20fill%3D%22%23fff%22/%3E%3C/svg%3E">
+<link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon">
+
+<!-- Fonts & Rendering Engines -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -104,7 +109,7 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
 .nav-c span{font-size:11.5px;color:var(--mu)}
 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--grn);margin-right:5px;vertical-align:1px;box-shadow:0 0 8px var(--grn)}
 
-/* ---- Dynamic Island Status Capsule ---- */
+/* ---- Dynamic Island ---- */
 #island{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.6);opacity:0;pointer-events:none;height:42px;padding:0 18px 0 14px;border-radius:999px;background:#05070e;color:#fff;display:flex;align-items:center;gap:10px;font:700 13.5px var(--round);white-space:nowrap;box-shadow:0 8px 30px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.14);transition:transform .55s var(--ease),opacity .3s}
 #navbar.isl #island{opacity:1;transform:translate(-50%,-50%) scale(1)}
 #navbar.isl .nav-c{opacity:0;transform:translate(-50%,-50%) scale(.8)}
@@ -115,7 +120,7 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
 @keyframes bar{50%{height:16px}}
 #navbar.timing .bars b{animation:none;height:10px;background:var(--red)}
 
-/* ---- Welcome Hero Section ---- */
+/* ---- Welcome Hero ---- */
 #welcome{flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px 8px;width:100%;max-width:780px;margin:0 auto;scrollbar-width:none}
 .who{display:inline-flex;align-items:center;gap:9px;padding:8px 16px 8px 12px;border-radius:999px;font-size:13.5px;font-weight:600;color:var(--mu);opacity:0;animation:fade .9s .1s var(--ease) forwards}
 .who i{width:8px;height:8px;border-radius:50%;background:var(--grn);box-shadow:0 0 0 0 rgba(48,209,88,.6);animation:ping 2s ease-out 3}
@@ -312,12 +317,12 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
       <rect width="40" height="40" rx="12" fill="url(#nl-h)"/>
       <ellipse cx="20" cy="20" rx="13.5" ry="5.4" transform="rotate(-32 20 20)" fill="none" stroke="#fff" stroke-opacity=".92" stroke-width="2.2"/>
       <circle cx="20" cy="20" r="3.7" fill="#fff"/>
-      <path d="M31 8.2l1.35 3.45 3.45 1.35-3.45 1.35L31 17.8l-1.35-3.45L26.2 13l3.45-1.35z" fill="#fff"/>
+      <path d="M31 8.2l1.35 3.45 3.45 1.35-3.45 1.35L31 17.8l-1.35-3.45L26.2%2013l3.45-1.35z" fill="#fff"/>
     </symbol>
   </defs>
 </svg>
 
-<!-- Glowing Liquid Ambient Orbs -->
+<!-- Ambient Glowing Orbs -->
 <div id="amb"><i></i><i></i><i></i><i></i></div>
 
 <div id="splash">
@@ -326,7 +331,7 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
     <rect width="40" height="40" rx="12" fill="url(#sl-g)"/>
     <ellipse class="so" cx="20" cy="20" rx="13.5" ry="5.4" transform="rotate(-32 20 20)" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
     <circle class="sn" cx="20" cy="20" r="3.7" fill="#fff"/>
-    <path class="ss" d="M31 8.2l1.35 3.45 3.45 1.35-3.45 1.35L31 17.8l-1.35-3.45L26.2 13l3.45-1.35z" fill="#fff"/>
+    <path class="ss" d="M31 8.2l1.35 3.45 3.45 1.35-3.45 1.35L31 17.8l-1.35-3.45L26.2%2013l3.45-1.35z" fill="#fff"/>
   </svg>
 </div>
 
@@ -826,9 +831,18 @@ async function send(){
   t.innerHTML=`<span class="mark">${LOGO}</span><div class="ai-text"><div class="thinking"><i></i>Nino is thinking…</div></div>`;
   chat.appendChild(t);chat.scrollTop=chat.scrollHeight;glow.classList.add('busy');
   try{
-    const fd=new FormData();fd.append("name",currentChatId);fd.append("interest",text||"General Study Optimization");fd.append("followup",text);if(file)fd.append("file",file);
+    const fd=new FormData();fd.append("name",currentChatId||"Anonymous");fd.append("interest",text||"General Study Optimization");fd.append("followup",text);if(file)fd.append("file",file);
     const headers={},uk=localStorage.getItem(USER_KEY_STORAGE);if(uk)headers['X-User-Key']=uk;
-    const res=await fetch("/guide",{method:"POST",body:fd,headers}),data=await res.json();$(tId)?.remove();
+    const res=await fetch("/guide",{method:"POST",body:fd,headers});
+    
+    if(!res.ok){
+      const errText=await res.text();
+      $(tId)?.remove();
+      addMessage(`### Backend Notice (HTTP ${res.status})\n\n${errText.slice(0,260)}`,"ai");
+      return;
+    }
+    
+    const data=await res.json();$(tId)?.remove();
     const trig=data.isTestTrigger||data.IsTestTrigger||data.istesttrigger,qs=data.questions||data.Questions,title=data.testTitle||data.TestTitle||text;
     if(trig&&qs&&qs.length){
       addMessage(data.chatResponse||data.ChatResponse||"I've opened your practice test.","ai",false,null,{title,questions:qs});
@@ -881,7 +895,7 @@ setTimeout(()=>{if(!isMobile()&&!document.querySelector('.modal.show')&&!$('welc
 autoGrow=function(){input.style.height='auto';const h=input.scrollHeight;input.style.height=Math.min(h,140)+'px';input.style.overflowY=h>140?'auto':'hidden'};
 if(isMobile()){PH.splice(0,PH.length,'Solve ∫ x·eˣ dx step by step','SN1 vs SN2, explained simply','Test me on Rotational Motion','Why do charges spiral in B?');input.placeholder=PH[0]}
 
-/* ---- Feedback System ---- */
+/* ---- Feedback ---- */
 const FEEDBACK_ENDPOINT='/api/feedback',FB_QUEUE='nino_feedback_queue';
 let fbRating=0,fbContext='';
 const FB_PH={bug:'What broke? What did you tap before it happened?',wrong_answer:'Which step or final answer is wrong, and what is the correct one?',idea:'What would make Nino more useful for your prep?',other:'Tell us anything.'};
