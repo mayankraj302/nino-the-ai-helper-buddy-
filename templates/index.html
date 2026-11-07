@@ -286,7 +286,8 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
   .act .ai{width:40px;height:40px;font-size:19px}
   .subj{width:100%}
 }
-@media(min-width:768px){#backdrop{display:none}}
+/* Fixed Jinja2 collision on next line: ensured space after '{' */
+@media(min-width:768px){ #backdrop{display:none}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 /* ---- Feedback ---- */
