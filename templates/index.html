@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover, interactive-widget=resizes-content">
-<meta name="theme-color" content="#000208">
-<title>Nino · JEE Advanced & Main AI Copilot</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%234f46e5%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%2300f2fe%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%2240%22%20height%3D%2240%22%20rx%3D%2212%22%20fill%3D%22url%28%23g%29%22/%3E%3Cellipse%20cx%3D%2220%22%20cy%3D%2220%22%20rx%3D%2213.5%22%20ry%3D%225.4%22%20transform%3D%22rotate%28-32%2020%2020%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.2%22/%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2220%22%20r%3D%223.7%22%20fill%3D%22%23fff%22/%3E%3Cpath%20d%3D%22M31%208.2l1.35%203.45%203.45%201.35-3.45%201.35L31%2017.8l-1.35-3.45L26.2%2013l3.45-1.35z%22%20fill%3D%22%23fff%22/%3E%3C/svg%3E">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover">
+<meta name="theme-color" content="#060813">
+<title>Nino · JEE Doubts Solved Instantly</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%236366f1%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%2338bdf8%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%2240%22%20height%3D%2240%22%20rx%3D%2212%22%20fill%3D%22url%28%23g%29%22/%3E%3Cellipse%20cx%3D%2220%22%20cy%3D%2220%22%20rx%3D%2213.5%22%20ry%3D%225.4%22%20transform%3D%22rotate%28-32%2020%2020%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.2%22/%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2220%22%20r%3D%223.7%22%20fill%3D%22%23fff%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -17,886 +17,521 @@
 @property --ang{syntax:'<angle>';initial-value:0deg;inherits:false}
 :root{
   color-scheme: dark;
-  --bg: #000208;
-  --bg-elevated: #060914;
+  --bg: #060813;
+  --card: rgba(18, 24, 43, 0.65);
   --tx: #f8fafc;
-  --mu: rgba(226, 232, 240, 0.72);
-  --dm: rgba(226, 232, 240, 0.44);
-  --gl: rgba(15, 23, 42, 0.55);
-  --gl2: rgba(30, 41, 59, 0.65);
-  --gb: rgba(255, 255, 255, 0.11);
-  --gb-strong: rgba(255, 255, 255, 0.22);
-  --hi: rgba(255, 255, 255, 0.18);
-  --ln: rgba(255, 255, 255, 0.07);
-  --fill: rgba(8, 12, 24, 0.82);
-  --sh: 0 16px 48px -8px rgba(0, 0, 0, 0.65);
-  --sh-glow: 0 0 35px rgba(79, 70, 229, 0.35);
-
-  /* JEE Focus Palette */
-  --blue: #0070f3;
-  --cyan: #00f2fe;
-  --ind: #6366f1;
-  --pur: #a855f7;
-  --grn: #10b981;
-  --red: #ef4444;
-  --org: #f59e0b;
-  --flame: #ff5722;
-
-  /* Samsung / Apple Fluid Curves */
-  --ease-apple: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
-  --ease-out: cubic-bezier(0.19, 1, 0.22, 1);
-  --st: env(safe-area-inset-top, 0px);
-  --sb: env(safe-area-inset-bottom, 0px);
-  --sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
-  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --mu: rgba(226, 232, 240, 0.7);
+  --dm: rgba(226, 232, 240, 0.4);
+  --gb: rgba(255, 255, 255, 0.08);
+  --gb-focus: rgba(99, 102, 241, 0.4);
+  --hi: rgba(255, 255, 255, 0.15);
+  
+  /* Focus Accents */
+  --indigo: #6366f1;
+  --cyan: #38bdf8;
+  --emerald: #10b981;
+  --amber: #f59e0b;
+  --rose: #f43f5e;
+  
+  --spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
 }
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;background:var(--bg);color:var(--tx)}
-body{font:16px/1.55 var(--sans);letter-spacing:-0.015em;overflow:hidden;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+html,body{height:100%;background:var(--bg);color:var(--tx);font:16px/1.6 var(--sans);overflow:hidden;letter-spacing:-0.012em}
 button,input,textarea{font:inherit;color:inherit;background:none;border:0;outline:0}
 button{cursor:pointer;user-select:none}
 .hidden{display:none!important}
-.icon{width:1.15em;height:1.15em;display:inline-block;vertical-align:-0.18em;flex-shrink:0}
 
-/* Ambient Deep-Space Aurora */
-#amb{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
-#amb .orb{position:absolute;border-radius:50%;filter:blur(110px);opacity:0.35;will-change:transform}
-#amb .o1{width:65vmax;height:65vmax;background:radial-gradient(circle,#4f46e5 0%,transparent 70%);top:-25vmax;left:-15vmax;animation:a1 32s ease-in-out infinite alternate}
-#amb .o2{width:55vmax;height:55vmax;background:radial-gradient(circle,#00f2fe 0%,transparent 70%);bottom:-20vmax;right:-15vmax;animation:a2 36s ease-in-out infinite alternate;opacity:0.25}
-#amb .o3{width:45vmax;height:45vmax;background:radial-gradient(circle,#a855f7 0%,transparent 70%);top:30%;left:45%;animation:a3 42s ease-in-out infinite alternate;opacity:0.22}
-@keyframes a1{to{transform:translate(9vmax,7vmax) scale(1.12)}}
-@keyframes a2{to{transform:translate(-8vmax,-6vmax) scale(0.92)}}
-@keyframes a3{to{transform:translate(-7vmax,5vmax) scale(1.15)}}
-
-/* App Wrapper */
-#app{position:relative;z-index:1;display:flex;height:100dvh;padding:calc(10px + var(--st)) 12px calc(10px + var(--sb));gap:12px}
-.glass{background:var(--gl);border:1px solid var(--gb);box-shadow:var(--sh),inset 0 1px 0 var(--hi);-webkit-backdrop-filter:blur(32px) saturate(190%);backdrop-filter:blur(32px) saturate(190%)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 22px;border-radius:999px;font-weight:600;font-size:15px;background:var(--gl);border:1px solid var(--gb);box-shadow:inset 0 1px 0 var(--hi),0 4px 16px rgba(0,0,0,0.3);transition:transform .35s var(--ease-apple),background .2s,border-color .2s}
-.btn:active{transform:scale(0.94)}
-@media(hover:hover){.btn:hover{background:var(--gl2);border-color:var(--gb-strong);transform:translateY(-1px)}}
-.btn.sq{width:48px;padding:0;font-size:20px}
-.btn.sm{min-height:38px;padding:0 15px;font-size:13.5px}
-.btn.primary{background:linear-gradient(135deg,#4f46e5,#00d2ff);border:none;color:#fff;box-shadow:0 8px 26px rgba(79,70,229,0.45),inset 0 1px 0 rgba(255,255,255,0.4)}
-.btn.accent{background:linear-gradient(135deg,#ff5722,#f59e0b);border:none;color:#fff;box-shadow:0 8px 24px rgba(245,158,11,0.4),inset 0 1px 0 rgba(255,255,255,0.4)}
-.btn.success{background:linear-gradient(135deg,#10b981,#059669);border:none;color:#fff;box-shadow:0 8px 24px rgba(16,185,129,0.35),inset 0 1px 0 rgba(255,255,255,0.4)}
-
-/* Samsung One UI Sidebar */
-#sidebar{width:300px;flex-shrink:0;display:flex;flex-direction:column;border-radius:30px;overflow:hidden;z-index:50;background:var(--fill);border:1px solid var(--gb);box-shadow:var(--sh)}
-.sb-head{height:72px;padding:0 20px;display:flex;align-items:center;justify-content:space-between}
-.brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:22px;letter-spacing:-0.03em}
-.brand-badge{font-size:10px;text-transform:uppercase;letter-spacing:0.08em;font-weight:800;padding:2px 7px;border-radius:6px;background:rgba(99,102,241,0.22);color:var(--cyan);border:1px solid rgba(99,102,241,0.4)}
-.mark{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#4f46e5,#00f2fe);box-shadow:0 6px 18px rgba(79,70,229,0.5),inset 0 1px 0 rgba(255,255,255,0.5);font-size:0}
-.mark svg{width:22px;height:22px}
-.new-chat-btn{margin:4px 16px 12px;justify-content:flex-start;background:rgba(255,255,255,0.06);font-size:14.5px}
-#history{flex:1;overflow-y:auto;padding:0 12px;scrollbar-width:none}
-.section-tag{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--dm);padding:14px 12px 6px}
-.hist-row{display:flex;align-items:center;gap:12px;width:100%;min-height:50px;padding:0 12px 0 16px;border-radius:18px;color:var(--mu);font-size:14.5px;position:relative;cursor:pointer;transition:all .25s var(--ease-apple)}
-.hist-row:hover{background:var(--gl2);color:var(--tx)}
-.hist-row.active{background:linear-gradient(90deg,rgba(99,102,241,0.18),rgba(0,242,254,0.08));border:1px solid rgba(99,102,241,0.3);color:var(--tx);font-weight:600}
-.hist-row .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hist-row .del{opacity:0;transition:opacity .2s;color:var(--red);padding:6px;border-radius:50%}
-.hist-row:hover .del{opacity:0.8}
-.hist-row .del:hover{opacity:1;background:rgba(239,68,68,0.15)}
-.sb-foot{padding:10px 12px 14px;border-top:1px solid var(--ln);display:flex;flex-direction:column;gap:4px}
-.sb-item{width:100%;display:flex;align-items:center;gap:12px;min-height:46px;padding:0 14px;border-radius:16px;font-size:14.5px;font-weight:500;color:var(--mu);transition:background .2s,color .2s}
-.sb-item:hover{background:var(--gl2);color:var(--tx)}
-.sb-item .ic{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;color:#fff;font-size:14px}
-
-/* Main Split View Area */
-#split{flex:1;display:flex;min-width:0;position:relative}
-#chat-section{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
-
-/* Apple Dynamic Island 2.0 ("Focus Matrix") */
-#navbar{position:absolute;top:0;left:0;right:0;z-index:30;height:68px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;pointer-events:none}
-#navbar > *{pointer-events:auto}
-#menu-btn{display:none}
-
-.island-container{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:40;transition:all .55s var(--ease-spring)}
-.island{
-  display:flex;align-items:center;gap:12px;height:46px;padding:0 18px 0 14px;border-radius:999px;
-  background:#02050e;border:1px solid var(--gb-strong);
-  box-shadow:0 12px 36px rgba(0,0,0,0.65),0 0 20px rgba(79,70,229,0.25);
-  font-size:14px;font-weight:600;white-space:nowrap;
-  transition:all .55s var(--ease-spring);
+/* Atmospheric Glow Background */
+#glow-bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+#glow-bg:before{
+  content:'';position:absolute;width:600px;height:450px;top:20%;left:50%;transform:translate(-50%,-50%);
+  background:radial-gradient(circle,rgba(99,102,241,0.18) 0%,rgba(56,189,248,0.08) 40%,transparent 70%);
+  filter:blur(80px);
 }
-.island-status{display:flex;align-items:center;gap:8px}
-.island-dot{width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:pulse 2s infinite}
-@keyframes pulse{50%{opacity:0.4;transform:scale(0.85)}}
-.island-bars{display:none;align-items:center;gap:3px;height:16px}
-.island-bars b{width:3px;border-radius:2px;background:var(--cyan);animation:bar .9s ease-in-out infinite;height:6px}
-.island-bars b:nth-child(2){animation-delay:.15s}.island-bars b:nth-child(3){animation-delay:.3s}
-@keyframes bar{50%{height:16px;background:var(--ind)}}
-.island.busy .island-dot{display:none}.island.busy .island-bars{display:flex}
-.island.busy{border-color:rgba(0,242,254,0.4);box-shadow:0 0 28px rgba(0,242,254,0.3)}
 
-/* Samsung Edge Action Handle */
-#edge-trigger{
-  position:absolute;right:0;top:40%;transform:translateY(-50%);z-index:35;
-  width:16px;height:64px;border-radius:12px 0 0 12px;
-  background:linear-gradient(180deg,rgba(99,102,241,0.5),rgba(0,242,254,0.5));
-  backdrop-filter:blur(10px);cursor:pointer;display:grid;place-items:center;
-  box-shadow:-4px 0 16px rgba(0,0,0,0.5);transition:width .3s var(--ease-apple),background .3s;
+/* App Shell */
+#app{position:relative;z-index:1;display:flex;height:100dvh;padding:12px;gap:12px}
+
+/* Minimalist Sidebar */
+#sidebar{
+  width:280px;flex-shrink:0;border-radius:24px;background:rgba(10,14,28,0.75);
+  border:1px solid var(--gb);display:flex;flex-direction:column;z-index:50;
+  backdrop-filter:blur(24px);box-shadow:0 20px 40px rgba(0,0,0,0.4);
+  transition:transform .4s var(--spring);
 }
-#edge-trigger:hover{width:22px}
-#edge-trigger span{display:block;width:3px;height:24px;border-radius:2px;background:#fff;opacity:0.8}
+.sb-header{height:64px;padding:0 18px;display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+.brand .logo{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#38bdf8);display:grid;place-items:center}
+.brand .badge{font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:rgba(56,189,248,0.15);color:var(--cyan);letter-spacing:0.04em}
 
-#edge-drawer{
-  position:absolute;right:0;top:10px;bottom:10px;width:320px;z-index:45;border-radius:28px 0 0 28px;
-  background:var(--fill);border:1px solid var(--gb);border-right:0;box-shadow:var(--sh);
-  transform:translateX(110%);transition:transform .5s var(--ease-apple);padding:20px;
-  display:flex;flex-direction:column;gap:16px;overflow-y:auto;backdrop-filter:blur(36px);
+.new-chat-btn{
+  margin:4px 14px 12px;padding:11px 16px;border-radius:14px;
+  background:rgba(255,255,255,0.04);border:1px solid var(--gb);
+  display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;
+  transition:all .2s;
 }
-#edge-drawer.open{transform:translateX(0)}
-.edge-title{font-size:16px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
-.const-card{padding:12px 14px;border-radius:18px;background:rgba(255,255,255,0.04);border:1px solid var(--gb);font-size:13.5px}
-.const-card b{color:var(--cyan);font-family:var(--mono)}
+.new-chat-btn:hover{background:rgba(255,255,255,0.08);border-color:var(--hi)}
+#history{flex:1;overflow-y:auto;padding:0 10px;scrollbar-width:none}
+.hist-item{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:10px 14px;border-radius:12px;color:var(--mu);font-size:14px;cursor:pointer;
+  transition:all .2s;margin-bottom:2px;
+}
+.hist-item:hover{background:rgba(255,255,255,0.05);color:var(--tx)}
+.hist-item.active{background:rgba(99,102,241,0.15);color:var(--tx);font-weight:600;border:1px solid rgba(99,102,241,0.3)}
+.hist-item .del{opacity:0;transition:opacity .2s;color:var(--rose)}
+.hist-item:hover .del{opacity:0.8}
 
-/* One UI Hero / Welcome Frame */
-#welcome{
+.sb-footer{padding:12px;border-top:1px solid var(--gb);display:flex;gap:6px}
+.sb-footer button{flex:1;height:40px;border-radius:10px;background:rgba(255,255,255,0.03);font-size:13px;font-weight:600;color:var(--mu)}
+.sb-footer button:hover{background:rgba(255,255,255,0.07);color:var(--tx)}
+
+/* Main Canvas */
+#main-area{flex:1;display:flex;flex-direction:column;position:relative;min-width:0}
+
+/* Top Navbar with Dynamic Island */
+#navbar{
+  height:60px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 10px;position:relative;z-index:30;
+}
+.icon-btn{
+  width:42px;height:42px;border-radius:12px;display:grid;place-items:center;
+  background:rgba(255,255,255,0.04);border:1px solid var(--gb);
+  color:var(--mu);transition:all .2s;
+}
+.icon-btn:hover{background:rgba(255,255,255,0.08);color:var(--tx)}
+#menu-toggle{display:none}
+
+/* Apple Dynamic Island */
+.island-wrap{position:absolute;left:50%;top:8px;transform:translateX(-50%);z-index:40}
+.dynamic-island{
+  display:inline-flex;align-items:center;gap:10px;height:44px;padding:0 18px;border-radius:999px;
+  background:#090d1a;border:1px solid var(--gb);box-shadow:0 8px 32px rgba(0,0,0,0.5);
+  font-size:13.5px;font-weight:600;white-space:nowrap;transition:all .45s var(--spring);
+}
+.island-dot{width:7px;height:7px;border-radius:50%;background:var(--emerald);box-shadow:0 0 8px var(--emerald)}
+.bars{display:none;align-items:center;gap:2.5px;height:14px}
+.bars b{width:3px;border-radius:2px;background:var(--cyan);animation:eq .9s ease-in-out infinite;height:5px}
+.bars b:nth-child(2){animation-delay:.15s}.bars b:nth-child(3){animation-delay:.3s}
+@keyframes eq{50%{height:14px;background:var(--indigo)}}
+.dynamic-island.busy{border-color:rgba(56,189,248,0.4);box-shadow:0 0 24px rgba(56,189,248,0.25)}
+.dynamic-island.busy .island-dot{display:none}
+.dynamic-island.busy .bars{display:flex}
+
+/* 2-Second Clear Home Stage */
+#home-stage{
   flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  text-align:center;padding:84px 20px 20px;max-width:880px;margin:0 auto;width:100%;scrollbar-width:none;
+  text-align:center;padding:20px;max-width:740px;margin:0 auto;width:100%;
 }
-.rank-pill{
-  display:inline-flex;align-items:center;gap:10px;padding:8px 18px 8px 14px;border-radius:999px;
-  font-size:13.5px;font-weight:700;color:var(--tx);background:rgba(255,255,255,0.05);border:1px solid var(--gb);
-  box-shadow:0 8px 24px rgba(0,0,0,0.4);animation:fadeUp .8s var(--ease-apple) both;
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;
+  background:rgba(255,255,255,0.05);border:1px solid var(--gb);font-size:13px;font-weight:600;
+  color:var(--cyan);margin-bottom:20px;
 }
-.rank-pill i{width:8px;height:8px;border-radius:50%;background:var(--grn);box-shadow:0 0 10px var(--grn)}
-.hero-title{font-size:clamp(36px,7.5vw,68px);font-weight:800;letter-spacing:-0.04em;line-height:1.06;margin:24px 0 16px}
-.hero-title .line{display:block;overflow:hidden}
-.hero-title .line span{display:inline-block;animation:heroSlide .9s var(--ease-apple) both}
-.hero-title .glow{
-  background:linear-gradient(135deg,#00f2fe 10%,#4f46e5 50%,#ff5722 95%);
-  -webkit-background-clip:text;background-clip:text;color:transparent;
-}
-@keyframes heroSlide{from{transform:translateY(120%)}to{transform:none}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.hero-title{font-size:clamp(36px,5.5vw,56px);font-weight:800;letter-spacing:-0.04em;line-height:1.1;margin-bottom:12px}
+.hero-title span{background:linear-gradient(135deg,#38bdf8,#6366f1);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero-desc{font-size:clamp(15px,2vw,17px);color:var(--mu);max-width:520px;line-height:1.5;margin-bottom:32px}
 
-.hero-sub{font-size:clamp(15px,2.2vw,18px);color:var(--mu);max-width:540px;line-height:1.6;margin-bottom:32px;animation:fadeUp 1s .2s var(--ease-apple) both}
-
-/* Subject Triad Cards */
-.subject-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:100%;max-width:760px;margin-bottom:28px}
-.subj-card{
-  position:relative;overflow:hidden;padding:22px 18px;border-radius:26px;text-align:left;cursor:pointer;
-  background:var(--gl);border:1px solid var(--gb);box-shadow:var(--sh);
-  transition:all .4s var(--ease-apple);
+/* Central Hero Input Hub */
+.hero-input-hub{width:100%;max-width:680px;position:relative}
+.input-capsule{
+  position:relative;border-radius:24px;background:rgba(15,21,38,0.7);
+  border:1px solid var(--gb);box-shadow:0 16px 40px -10px rgba(0,0,0,0.6),inset 0 1px 0 var(--hi);
+  backdrop-filter:blur(30px);transition:border-color .3s,box-shadow .3s;padding:12px;
 }
-.subj-card:hover{transform:translateY(-6px);border-color:var(--c);box-shadow:0 18px 38px color-mix(in srgb,var(--c) 25%,transparent)}
-.subj-card .sc-icon{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:22px;color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent);margin-bottom:14px}
-.subj-card h3{font-size:17px;font-weight:700;margin-bottom:4px}
-.subj-card p{font-size:12.5px;color:var(--mu);line-height:1.4}
-.subj-card.phy{--c:var(--cyan)}
-.subj-card.chem{--c:var(--grn)}
-.subj-card.math{--c:var(--pur)}
+.input-capsule:focus-within{border-color:var(--gb-focus);box-shadow:0 20px 48px -10px rgba(99,102,241,0.25)}
+.textarea-row{display:flex;align-items:flex-start;gap:10px}
+#user-textarea{
+  flex:1;max-height:140px;padding:8px 6px;font-size:16px;line-height:1.5;
+  color:#fff;resize:none;scrollbar-width:none;
+}
+#user-textarea::placeholder{color:var(--dm)}
+.action-row{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--gb)}
+.left-actions{display:flex;align-items:center;gap:8px}
+.pill-btn{
+  display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;
+  background:rgba(255,255,255,0.05);border:1px solid var(--gb);font-size:13px;font-weight:600;
+  color:var(--mu);transition:all .2s;
+}
+.pill-btn:hover{background:rgba(255,255,255,0.1);color:var(--tx)}
+.pill-btn.active{background:rgba(56,189,248,0.15);border-color:rgba(56,189,248,0.3);color:var(--cyan)}
+.submit-btn{
+  width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#38bdf8);
+  display:grid;place-items:center;color:#fff;transition:transform .2s var(--spring),opacity .2s;
+}
+.submit-btn.disabled{opacity:0.3;pointer-events:none;transform:scale(0.92)}
 
-/* Chat Window & Rich Bubbles */
-#chat-window{flex:1;overflow-y:auto;padding:80px 16px 20px;max-width:840px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:24px;scrollbar-width:none}
-.msg{display:flex;width:100%;animation:msgPop .45s var(--ease-apple) both}
-@keyframes msgPop{from{opacity:0;transform:translateY(16px) scale(0.97)}to{opacity:1;transform:none}}
+/* 3 Quick Jump Cards */
+.quick-picks{display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+.quick-chip{
+  padding:8px 16px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid var(--gb);
+  font-size:13px;font-weight:600;color:var(--mu);transition:all .2s;
+}
+.quick-chip:hover{background:rgba(255,255,255,0.08);color:var(--tx);transform:translateY(-1px)}
+
+/* Chat Message Window */
+#chat-stage{flex:1;overflow-y:auto;padding:20px 16px;max-width:800px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:20px;scrollbar-width:none}
+.msg{display:flex;width:100%;animation:fadeIn .3s var(--spring)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .msg.user{justify-content:flex-end}
 .msg.user .bubble{
-  max-width:min(82%,580px);padding:14px 20px;border-radius:26px 26px 6px 26px;
-  background:linear-gradient(135deg,#3730a3,#4f46e5);color:#fff;
-  box-shadow:0 8px 24px rgba(79,70,229,0.35),inset 0 1px 0 rgba(255,255,255,0.35);font-size:16px;
+  max-width:80%;padding:12px 18px;border-radius:20px 20px 4px 20px;
+  background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;font-size:15.5px;
+  box-shadow:0 4px 16px rgba(79,70,229,0.3);
 }
-.msg.ai{gap:14px;align-items:flex-start}
-.msg.ai .mark{width:36px;height:36px;border-radius:12px;margin-top:2px;flex-shrink:0}
-.ai-text{flex:1;min-width:0;font-size:16.5px;line-height:1.7}
-.rich h1,.rich h2,.rich h3{margin:18px 0 8px;font-weight:700;letter-spacing:-0.03em}
-.rich h1{font-size:24px;color:var(--cyan)}.rich h2{font-size:20px}.rich h3{font-size:17px}
-.rich p{margin-bottom:12px}.rich p:last-child{margin:0}
-.rich ul,.rich ol{padding-left:22px;margin:10px 0 14px}
-.rich li{margin:5px 0}
-.rich code{font-family:var(--mono);font-size:.9em;background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:6px;border:1px solid var(--gb)}
-.rich pre{background:rgba(0,0,0,0.5);border:1px solid var(--gb);border-radius:20px;padding:16px;overflow-x:auto;margin:14px 0}
-.rich pre code{background:none;border:0;padding:0}
-.rich blockquote{border-left:3px solid var(--cyan);padding-left:14px;color:var(--mu);margin:14px 0}
+.msg.ai{gap:12px;align-items:flex-start}
+.msg.ai .avatar{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#38bdf8);display:grid;place-items:center;flex-shrink:0}
+.ai-content{flex:1;min-width:0;font-size:16px;line-height:1.7}
+.ai-content p{margin-bottom:12px}.ai-content p:last-child{margin:0}
+.ai-content h1,.ai-content h2,.ai-content h3{margin:16px 0 8px;font-weight:700}
+.ai-content ul,.ai-content ol{padding-left:20px;margin-bottom:12px}
+.ai-content code{font-family:var(--mono);font-size:0.9em;background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:6px}
+.ai-content pre{background:rgba(0,0,0,0.5);border:1px solid var(--gb);border-radius:16px;padding:14px;overflow-x:auto;margin:12px 0}
 
-/* JEE Examiner "Trap Alert" Card */
-.trap-alert{
-  margin:16px 0;padding:14px 18px;border-radius:20px;background:rgba(239,68,68,0.12);
-  border:1px solid rgba(239,68,68,0.35);display:flex;gap:12px;align-items:flex-start;font-size:14.5px;
-}
-.trap-alert b{color:var(--red);font-weight:700;display:block}
+/* Persistent Bottom Capsule (Visible during active chat) */
+#bottom-bar{padding:10px;max-width:800px;margin:0 auto;width:100%}
 
-/* Composer: Apple Pill meets Samsung One-Handed Ergonomics */
-#composer{flex-shrink:0;width:100%;max-width:840px;margin:0 auto;padding:0 8px 4px;position:relative}
-.chips-bar{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none}
-.chip-btn{
-  flex-shrink:0;display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;
-  font-size:13px;font-weight:600;background:var(--gl);border:1px solid var(--gb);
-  box-shadow:inset 0 1px 0 var(--hi);transition:all .3s var(--ease-apple);
+/* Test Split Slide-In Drawer */
+#test-drawer{
+  position:fixed;right:0;top:0;bottom:0;width:480px;background:rgba(12,16,32,0.92);
+  border-left:1px solid var(--gb);box-shadow:-20px 0 50px rgba(0,0,0,0.7);
+  z-index:100;backdrop-filter:blur(36px);display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform .4s var(--spring);
 }
-.chip-btn:hover{background:var(--gl2);transform:translateY(-2px)}
-.chip-btn i{width:8px;height:8px;border-radius:50%}
+#test-drawer.open{transform:translateX(0)}
+.td-head{height:64px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--gb)}
+.td-timer{font-family:var(--mono);font-weight:700;color:var(--amber);background:rgba(245,158,11,0.15);padding:4px 12px;border-radius:999px;font-size:13.5px}
+#test-body{flex:1;overflow-y:auto;padding:20px;scrollbar-width:none}
+.test-q-card{padding:18px;border-radius:18px;background:rgba(255,255,255,0.03);border:1px solid var(--gb);margin-bottom:16px}
+.td-opt{
+  display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;
+  background:rgba(255,255,255,0.02);border:1px solid var(--gb);margin-top:8px;cursor:pointer;transition:all .2s;
+}
+.td-opt:hover{background:rgba(255,255,255,0.06)}
+.td-opt.selected{border-color:var(--indigo);background:rgba(99,102,241,0.15)}
 
-.capsule-ring{position:relative;border-radius:36px;padding:2px}
-.capsule-ring:before{
-  content:'';position:absolute;inset:0;border-radius:inherit;padding:2px;
-  background:conic-gradient(from var(--ang),#00f2fe,#4f46e5,#ff5722,#00f2fe);
-  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
-  animation:spinRing 4s linear infinite;opacity:0;transition:opacity .4s;
-}
-.capsule-ring.busy:before,.capsule-ring:focus-within:before{opacity:1}
-@keyframes spinRing{to{--ang:360deg}}
-
-.composer-field{
-  display:flex;align-items:flex-end;gap:8px;padding:8px 10px;border-radius:34px;
-  background:var(--fill);border:1px solid var(--gb);box-shadow:var(--sh),inset 0 1px 0 var(--hi);
-  backdrop-filter:blur(36px);
-}
-.plus-pill{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:22px;color:var(--mu);background:rgba(255,255,255,0.06);transition:all .2s}
-.plus-pill:hover{background:rgba(255,255,255,0.12);color:var(--tx)}
-#user-input{flex:1;max-height:140px;padding:12px 8px;font-size:16px;line-height:1.45;color:var(--tx);resize:none}
-#user-input::placeholder{color:var(--dm)}
-#send-btn{
-  width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:#fff;
-  background:linear-gradient(135deg,#4f46e5,#00f2fe);box-shadow:0 6px 18px rgba(79,70,229,0.5);
-  transition:transform .3s var(--ease-spring),opacity .2s;
-}
-#send-btn.off{opacity:0.35;pointer-events:none;transform:scale(0.9)}
-
-/* Split CBT Practice Test Simulator (DeX Inspired) */
-#slider{width:10px;cursor:col-resize;position:relative;flex-shrink:0;z-index:25}
-#slider:after{
-  content:'';position:absolute;top:50%;left:3px;width:4px;height:54px;border-radius:2px;
-  background:var(--gb-strong);transform:translateY(-50%);transition:all .2s;
-}
-#slider:hover:after,#slider.dragging:after{background:var(--cyan);height:80px}
-
-#test-section{
-  display:none;flex-direction:column;position:relative;min-width:30%;border-radius:30px;
-  overflow:hidden;background:var(--fill);border:1px solid var(--gb);box-shadow:var(--sh);
-  backdrop-filter:blur(40px);
-}
-#test-section.open{display:flex}
-.cbt-header{height:68px;padding:0 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--ln)}
-.cbt-timer{
-  font-family:var(--mono);font-size:14px;font-weight:700;padding:6px 14px;border-radius:999px;
-  color:var(--flame);background:rgba(255,87,34,0.15);border:1px solid rgba(255,87,34,0.3);
-  display:inline-flex;align-items:center;gap:6px;
-}
-#test-viewport{flex:1;overflow-y:auto;padding:18px;scrollbar-width:none}
-.q-card{border-radius:24px;padding:20px;background:var(--gl);border:1px solid var(--gb);margin-bottom:16px;box-shadow:inset 0 1px 0 var(--hi)}
-.q-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:12px}
-.q-badges{display:flex;gap:8px;align-items:center}
-.q-num{font-family:var(--mono);font-size:12px;font-weight:700;padding:4px 10px;border-radius:8px;background:rgba(99,102,241,0.2);color:var(--cyan)}
-.marking-tag{font-size:11px;font-weight:700;padding:4px 8px;border-radius:6px;background:rgba(16,185,129,0.15);color:var(--grn)}
-.q-text{font-size:16px;line-height:1.65;margin-bottom:16px}
-.opts{display:flex;flex-direction:column;gap:10px}
-.opt{
-  display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:18px;
-  background:rgba(255,255,255,0.03);border:1px solid var(--gb);transition:all .25s var(--ease-apple);
-  font-size:15px;text-align:left;
-}
-.opt .key{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,0.06);font-weight:700;font-size:13px;flex-shrink:0}
-.opt:hover:not(:disabled){background:rgba(255,255,255,0.08);transform:translateX(4px)}
-.opt.sel{background:rgba(99,102,241,0.2);border-color:var(--ind);box-shadow:0 0 0 3px rgba(99,102,241,0.25)}
-.opt.sel .key{background:var(--ind);color:#fff}
-.opt.right{background:rgba(16,185,129,0.2);border-color:var(--grn)}.opt.right .key{background:var(--grn);color:#fff}
-.opt.wrong{background:rgba(239,68,68,0.2);border-color:var(--red)}.opt.wrong .key{background:var(--red);color:#fff}
-
-/* Mistake Analytics Wheel */
-.analytics-card{padding:24px;border-radius:26px;background:var(--gl);border:1px solid var(--gb);margin-bottom:18px}
-.score-row{display:flex;align-items:center;gap:24px;margin-bottom:18px}
-.score-wheel{width:88px;height:88px;transform:rotate(-90deg)}
-.score-stat{font-size:48px;font-weight:800;letter-spacing:-0.04em;line-height:1}
-.score-stat small{font-size:18px;color:var(--mu);font-weight:600}
-
-/* Modals */
-.modal{position:fixed;inset:0;z-index:200;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.65);backdrop-filter:blur(10px);opacity:0;pointer-events:none;transition:opacity .35s var(--ease-apple);padding:12px}
-.modal.show{opacity:1;pointer-events:auto}
-.modal-sheet{width:100%;max-width:460px;border-radius:32px;background:var(--fill);border:1px solid var(--gb-strong);box-shadow:var(--sh);transform:translateY(100%);transition:transform .45s var(--ease-apple);overflow:hidden}
-.modal.show .modal-sheet{transform:none}
-@media(min-width:640px){.modal{align-items:center}.modal-sheet{transform:scale(0.93);transition:all .35s var(--ease-apple)}.modal.show .modal-sheet{transform:none}}
-
-/* Responsive Adjustments (<768px Mobile First) */
-@media(max-width:767px){
-  #app{padding:calc(6px + var(--st)) 6px calc(6px + var(--sb));gap:0}
-  #sidebar{position:fixed;inset:calc(8px + var(--st)) auto calc(8px + var(--sb)) 8px;width:min(86vw,320px);transform:translateX(-115%);transition:transform .5s var(--ease-apple)}
-  #sidebar.open{transform:none}
-  #menu-btn{display:grid}
-  .subject-grid{grid-template-columns:1fr;gap:10px}
-  #test-section{position:fixed;inset:0;border-radius:0;z-index:90;transform:translateY(100%);transition:transform .5s var(--ease-apple)}
-  #test-section.shown{transform:none}
-  #slider{display:none!important}
-  #edge-trigger{display:none}
+@media(max-width:768px){
+  #sidebar{position:fixed;inset:10px auto 10px 10px;width:min(85vw,300px);transform:translateX(-120%)}
+  #sidebar.open{transform:translateX(0)}
+  #menu-toggle{display:grid}
+  #test-drawer{width:100%}
 }
 </style>
 </head>
 
 <body>
-<div id="amb"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div></div>
-
+<div id="glow-bg"></div>
 <div id="app">
-  <!-- Backdrop for drawer -->
-  <div id="backdrop" style="position:fixed;inset:0;z-index:45;background:rgba(0,0,0,0.6);opacity:0;pointer-events:none;transition:opacity .3s" onclick="toggleSidebar()"></div>
 
-  <!-- Samsung One UI Nav Sidebar -->
+  <!-- Minimal Sidebar -->
   <aside id="sidebar">
-    <div class="sb-head">
+    <div class="sb-header">
       <div class="brand">
-        <span class="mark">
-          <svg viewBox="0 0 40 40"><ellipse cx="20" cy="20" rx="13.5" ry="5.4" transform="rotate(-32 20 20)" fill="none" stroke="#fff" stroke-width="2.5"/><circle cx="20" cy="20" r="3.7" fill="#fff"/></svg>
-        </span>
-        Nino <span class="brand-badge">JEE 2026</span>
+        <div class="logo">⚡</div>
+        <span>Nino</span>
+        <span class="badge">JEE 2.0</span>
       </div>
-      <button class="btn sq sm" onclick="toggleSidebar()"><svg class="icon" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+      <button class="icon-btn" onclick="toggleSidebar()" style="width:34px;height:34px">✕</button>
     </div>
-    <button class="btn new-chat-btn" onclick="startNewChat()">
-      <svg class="icon" viewBox="0 0 24 24"><path d="M12 4v16m-8-8h16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
-      New JEE Doubt Session
+    <button class="new-chat-btn" onclick="startFreshChat()">
+      <span style="font-size:16px">+</span> New Doubt Session
     </button>
     <div id="history"></div>
-    <div class="sb-foot">
-      <button class="sb-item" onclick="openProfile()"><span class="ic" style="background:#6366f1">🎯</span>Target AIR & Profile</button>
-      <button class="sb-item" onclick="openFeedback()"><span class="ic" style="background:#f59e0b">💡</span>Report Doubt / Feedback</button>
-      <button class="sb-item" onclick="openSettings()"><span class="ic" style="background:#64748b">⚙️</span>Tutor Personality & API</button>
+    <div class="sb-footer">
+      <button onclick="alert('Target: Top 500 in JEE Advanced. Daily accuracy tracking active.')">🎯 Targets</button>
+      <button onclick="startFreshChat()">🗑️ Reset</button>
     </div>
   </aside>
 
-  <!-- Main Interaction Space -->
-  <div id="split">
-    <section id="chat-section">
-      <!-- Apple Dynamic Island 2.0 -->
-      <header id="navbar">
-        <button id="menu-btn" class="btn sq" onclick="toggleSidebar()"><svg class="icon" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+  <!-- Main View -->
+  <main id="main-area">
+    <!-- Navbar with Apple Dynamic Island -->
+    <header id="navbar">
+      <button class="icon-btn" id="menu-toggle" onclick="toggleSidebar()">☰</button>
+      
+      <!-- Center Dynamic Island -->
+      <div class="island-wrap">
+        <div class="dynamic-island" id="island">
+          <span class="island-dot"></span>
+          <div class="bars"><b></b><b></b><b></b></div>
+          <span id="island-text">Nino · Ready for your doubt</span>
+        </div>
+      </div>
+
+      <button class="icon-btn" onclick="startFreshChat()" title="New Chat">✎</button>
+    </header>
+
+    <!-- 2-Second Clean Home Screen -->
+    <section id="home-stage">
+      <div class="hero-badge">⚡ IIT-JEE Physics, Chemistry & Maths</div>
+      <h1 class="hero-title">Your JEE doubts, <span>solved in seconds.</span></h1>
+      <p class="hero-desc">Ask any complex equation, reaction mechanism, or snap a photo of your module.</p>
+
+      <!-- The Central Hero Capsule -->
+      <div class="hero-input-hub">
+        <div class="input-capsule">
+          <input type="file" id="file-picker" accept="image/*,.pdf" class="hidden" onchange="onFilePicked()">
+          <div class="textarea-row">
+            <textarea id="user-textarea" rows="1" placeholder="Type a concept, paste a problem, or ask for a test…"></textarea>
+          </div>
+          <div class="action-row">
+            <div class="left-actions">
+              <button class="pill-btn" onclick="$('file-picker').click()">📷 Snap / Upload</button>
+              <button class="pill-btn" onclick="fillPrompt('Test me on Rotational Motion')">⚡ Mechanics</button>
+              <button class="pill-btn" onclick="fillPrompt('Explain SN1 vs SN2 reaction traps')">🧪 Organic</button>
+            </div>
+            <button class="submit-btn disabled" id="submit-trigger" onclick="submitMessage()">➔</button>
+          </div>
+        </div>
         
-        <div class="island-container">
-          <div class="island" id="dynamic-island">
-            <span class="island-status">
-              <span class="island-dot"></span>
-              <span class="island-bars"><b></b><b></b><b></b></span>
-            </span>
-            <span id="island-label">Nino · JEE Advisory Active</span>
-          </div>
-        </div>
-
-        <button class="btn sq" onclick="startNewChat()"><svg class="icon" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
-      </header>
-
-      <!-- Samsung Edge Handle for JEE Constants -->
-      <div id="edge-trigger" onclick="toggleEdgeDrawer()" title="Quick Constants & Formulas"><span></span></div>
-      <div id="edge-drawer">
-        <div class="edge-title">
-          <span>⚡ JEE Quick Toolkit</span>
-          <button onclick="toggleEdgeDrawer()" style="font-size:18px">✕</button>
-        </div>
-        <div class="const-card"><b>Planck's h:</b> 6.626 × 10⁻³⁴ J·s</div>
-        <div class="const-card"><b>Gas Constant R:</b> 8.314 J/(mol·K)</div>
-        <div class="const-card"><b>Permittivity ε₀:</b> 8.854 × 10⁻¹² F/m</div>
-        <div class="const-card"><b>Permeability μ₀:</b> 4π × 10⁻⁷ T·m/A</div>
-        <div class="const-card"><b>Electron Volt:</b> 1.602 × 10⁻¹⁹ J</div>
-        <div class="const-card"><b>Gravitational g:</b> 9.807 m/s²</div>
-      </div>
-
-      <!-- Welcome Stage -->
-      <div id="welcome">
-        <div class="rank-pill"><i></i>Targeting Top 500 in JEE Advanced</div>
-        <h1 class="hero-title">
-          <span class="line"><span>Master Concepts.</span></span>
-          <span class="line"><span class="glow">Crush Negative Marks.</span></span>
-        </h1>
-        <p class="hero-sub">Snap questions, evaluate deep step-by-step calculus, reaction mechanisms, and rotational dynamics with instant CBT testing.</p>
-
-        <!-- Subject Triad Cards -->
-        <div class="subject-grid">
-          <div class="subj-card phy" onclick="quickPrompt('Generate a challenging Physics Mechanics problem on Rotational Motion with friction')">
-            <div class="sc-icon">⚡</div>
-            <h3>Physics</h3>
-            <p>Mechanics, Electrodynamics, Optics & Modern Physics</p>
-          </div>
-          <div class="subj-card chem" onclick="quickPrompt('Explain the electrophilic aromatic substitution mechanism with activating vs deactivating groups')">
-            <div class="sc-icon">🧪</div>
-            <h3>Chemistry</h3>
-            <p>Organic Pathways, Coordination Compounds & Physical Equilibrium</p>
-          </div>
-          <div class="subj-card math" onclick="quickPrompt('Provide an advanced problem on Definite Integration using King\'s Property with solution')">
-            <div class="sc-icon">∫dx</div>
-            <h3>Mathematics</h3>
-            <p>Definite Integrals, Vectors & 3D, Coordinate Geometry</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Live Chat Stream -->
-      <div id="chat-window" class="hidden"></div>
-
-      <!-- Composer Capsule -->
-      <div id="composer">
-        <div class="chips-bar">
-          <button class="chip-btn" onclick="quickPrompt('Give me a 5-question mock test on Electrostatics')"><i style="background:var(--cyan)"></i>Test Electrostatics</button>
-          <button class="chip-btn" onclick="quickPrompt('Explain Le Chatelier\'s principle with pressure and inert gas injection')"><i style="background:var(--grn)"></i>Equilibrium Traps</button>
-          <button class="chip-btn" onclick="quickPrompt('Find the shortest distance between two skew lines in 3D geometry')"><i style="background:var(--pur)"></i>Skew Lines 3D</button>
-        </div>
-
-        <div id="file-preview-strip" class="hidden" style="padding:6px 12px;margin-bottom:8px;border-radius:18px;background:var(--gl);border:1px solid var(--gb);display:flex;align-items:center;justify-content:space-between">
-          <span id="file-name-label" style="font-size:13.5px;color:var(--cyan)">Attached file</span>
-          <button onclick="clearAttachment()" style="color:var(--red);font-size:16px">✕</button>
-        </div>
-
-        <div class="capsule-ring" id="capsule-glow">
-          <div class="composer-field">
-            <input type="file" id="file-input" accept="image/*,.pdf" class="hidden" onchange="onFileSelected()">
-            <button class="plus-pill" onclick="$('file-input').click()" title="Attach problem diagram or notes">📎</button>
-            <textarea id="user-input" rows="1" placeholder="Type a concept, paste LaTeX, or snap a problem…"></textarea>
-            <button id="send-btn" class="off" onclick="handleSend()"><svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-          </div>
+        <div class="quick-picks">
+          <button class="quick-chip" onclick="fillPrompt('Give me a 5-question mock test on Electrostatics')">🎯 Quick Mock Test</button>
+          <button class="quick-chip" onclick="fillPrompt('Shortest distance between two skew lines formula proof')">📐 3D Geometry</button>
+          <button class="quick-chip" onclick="fillPrompt('Thermodynamics reversible vs irreversible work done')">🔥 Thermo Traps</button>
         </div>
       </div>
     </section>
 
-    <!-- Draggable CBT Split Bar -->
-    <div id="slider" class="hidden"></div>
+    <!-- Chat Messages Stream (Initially Hidden) -->
+    <section id="chat-stage" class="hidden"></section>
 
-    <!-- Samsung DeX Inspired Practice Test Section -->
-    <section id="test-section">
-      <div class="cbt-header">
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-weight:700" id="test-header-title">CBT Simulation</span>
-          <span class="cbt-timer" id="test-timer-badge">⏱ <span id="cbt-countdown">15:00</span></span>
-        </div>
-        <button class="btn sm" onclick="closeTestSection()">Close</button>
-      </div>
+    <!-- Persistent Bottom Bar when chatting -->
+    <div id="bottom-bar" class="hidden"></div>
+  </main>
 
-      <div id="test-viewport"></div>
-
-      <div style="padding:14px 18px;border-top:1px solid var(--ln);display:flex;justify-content:space-between;align-items:center">
-        <span id="answered-stat" style="font-size:13.5px;color:var(--mu);font-weight:600">0 / 0 Answered</span>
-        <button class="btn success sm" id="submit-test-btn" onclick="submitCbtExam()">Submit Exam</button>
-      </div>
-    </section>
-  </div>
-</div>
-
-<!-- Profile Modal -->
-<div id="profile-modal" class="modal" onclick="closeModal('profile-modal')">
-  <div class="modal-sheet" onclick="event.stopPropagation()">
-    <div style="padding:20px;border-bottom:1px solid var(--ln);display:flex;justify-content:space-between;align-items:center">
-      <b>JEE Performance Profile</b>
-      <button onclick="closeModal('profile-modal')">✕</button>
+  <!-- Slide-In Test Sandbox -->
+  <aside id="test-drawer">
+    <div class="td-head">
+      <b id="test-title">JEE Practice Drill</b>
+      <span class="td-timer" id="test-clock">15:00</span>
+      <button class="icon-btn" onclick="closeTestDrawer()" style="width:34px;height:34px">✕</button>
     </div>
-    <div style="padding:22px">
-      <div style="text-align:center;margin-bottom:18px">
-        <div style="width:72px;height:72px;border-radius:24px;margin:0 auto 10px;background:linear-gradient(135deg,#4f46e5,#00f2fe);display:grid;place-items:center;font-size:28px">🚀</div>
-        <h3 id="prof-user">Aspirant Session</h3>
-        <p style="font-size:13px;color:var(--mu)">Targeting IIT Bombay / Delhi Computer Science</p>
-      </div>
-      <div style="padding:16px;border-radius:20px;background:rgba(255,255,255,0.04);margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:8px"><span>Preparation Progress</span><b style="color:var(--cyan)" id="prof-pct">74%</b></div>
-        <div style="height:8px;border-radius:4px;background:rgba(255,255,255,0.1);overflow:hidden">
-          <div id="prof-bar" style="height:100%;width:74%;background:linear-gradient(90deg,#4f46e5,#00f2fe);border-radius:4px"></div>
-        </div>
-      </div>
+    <div id="test-body"></div>
+    <div style="padding:16px;border-top:1px solid var(--gb);display:flex;justify-content:space-between;align-items:center">
+      <span id="test-progress-label" style="font-size:13px;color:var(--mu)">0 / 0 Answered</span>
+      <button class="pill-btn active" onclick="evaluateTest()">Submit Test</button>
     </div>
-  </div>
-</div>
-
-<!-- Settings Modal -->
-<div id="settings-modal" class="modal" onclick="closeModal('settings-modal')">
-  <div class="modal-sheet" onclick="event.stopPropagation()">
-    <div style="padding:20px;border-bottom:1px solid var(--ln);display:flex;justify-content:space-between;align-items:center">
-      <b>Tutor Settings & Keys</b>
-      <button onclick="closeModal('settings-modal')">✕</button>
-    </div>
-    <div style="padding:22px;display:flex;flex-direction:column;gap:16px">
-      <div>
-        <label style="font-size:13px;color:var(--mu);display:block;margin-bottom:6px">Mentor Rigor</label>
-        <select id="mentor-style" style="width:100%;padding:12px;border-radius:14px;background:rgba(255,255,255,0.06);border:1px solid var(--gb);color:#fff">
-          <option value="adaptive">Adaptive JEE Coach (Concept + Trap Alerts)</option>
-          <option value="strict">Strict IIT Professor (Penalizes sloppy steps)</option>
-          <option value="supportive">Motivational Peer (Burnout mitigation)</option>
-        </select>
-      </div>
-      <div>
-        <label style="font-size:13px;color:var(--mu);display:block;margin-bottom:6px">Custom Gemini Pro API Key (Optional)</label>
-        <input type="password" id="custom-api-key" placeholder="Paste custom key to bypass shared quota" style="width:100%;padding:12px;border-radius:14px;background:rgba(255,255,255,0.06);border:1px solid var(--gb);color:#fff">
-      </div>
-      <button class="btn primary" onclick="saveSettings()" style="margin-top:8px">Save Configuration</button>
-    </div>
-  </div>
-</div>
-
-<!-- Feedback Modal -->
-<div id="feedback-modal" class="modal" onclick="closeModal('feedback-modal')">
-  <div class="modal-sheet" onclick="event.stopPropagation()">
-    <div style="padding:20px;border-bottom:1px solid var(--ln);display:flex;justify-content:space-between;align-items:center">
-      <b>Report Problem / Submit Feedback</b>
-      <button onclick="closeModal('feedback-modal')">✕</button>
-    </div>
-    <div style="padding:22px;display:flex;flex-direction:column;gap:14px">
-      <textarea id="feedback-text" rows="4" placeholder="Mention question ID or step where an error occurred…" style="width:100%;padding:14px;border-radius:18px;background:rgba(255,255,255,0.06);border:1px solid var(--gb);color:#fff"></textarea>
-      <button class="btn accent" onclick="sendFeedback()">Submit Feedback</button>
-    </div>
-  </div>
+  </aside>
 </div>
 
 <script>
-// Synthesized Web Audio Haptic & Feedback Engine
-const AudioFx = {
-  ctx: null,
-  init() { if(!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
-  click() {
-    try {
-      this.init(); const osc = this.ctx.createOscillator(), g = this.ctx.createGain();
-      osc.type = 'sine'; osc.frequency.setValueAtTime(600, this.ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(180, this.ctx.currentTime + 0.04);
-      g.gain.setValueAtTime(0.08, this.ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.04);
-      osc.connect(g); g.connect(this.ctx.destination); osc.start(); osc.stop(this.ctx.currentTime + 0.04);
-    } catch(e){}
-  },
-  success() {
-    try {
-      this.init(); [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
-        const osc = this.ctx.createOscillator(), g = this.ctx.createGain();
-        osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx*0.08);
-        g.gain.setValueAtTime(0.07, this.ctx.currentTime + idx*0.08);
-        g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx*0.08 + 0.2);
-        osc.connect(g); g.connect(this.ctx.destination);
-        osc.start(this.ctx.currentTime + idx*0.08); osc.stop(this.ctx.currentTime + idx*0.08 + 0.25);
-      });
-    } catch(e){}
-  }
-};
-
 const $ = id => document.getElementById(id);
-const chat = $('chat-window'), input = $('user-input'), sendBtn = $('send-btn'), welcome = $('welcome');
-let currentChatId = null, chatSessions = [], selectedFile = null;
-let cbtQuestions = [], cbtTimer = null, cbtRemaining = 0, isCbtReview = false;
+const home = $('home-stage'), chat = $('chat-stage'), input = $('user-textarea'), sendBtn = $('submit-trigger');
+let currentChat = null, sessions = [], attachedFile = null, testTimer = null;
 
-// KaTeX Helper
-function parseFormulas(text) {
-  if (typeof katex === 'undefined') return text;
-  let res = text.replace(/\$\$([\s\S]+?)\$\$/g, (m, f) => {
-    try { return `<div style="overflow-x:auto;padding:8px 0">${katex.renderToString(f.trim(), {displayMode:true, throwOnError:false})}</div>`; } catch{ return m; }
+// Formula Formatter (KaTeX)
+function renderMath(t) {
+  if (typeof katex === 'undefined') return t;
+  let o = t.replace(/\$\$([\s\S]+?)\$\$/g, (m, f) => {
+    try { return `<div style="overflow-x:auto;padding:6px 0">${katex.renderToString(f.trim(), {displayMode:true, throwOnError:false})}</div>`; } catch{ return m; }
   });
-  return res.replace(/\$([^\$\n]+?)\$/g, (m, f) => {
+  return o.replace(/\$([^\$\n]+?)\$/g, (m, f) => {
     try { return katex.renderToString(f, {displayMode:false, throwOnError:false}); } catch{ return m; }
   });
 }
 
-// Session Initialization
-window.addEventListener('DOMContentLoaded', () => {
-  try { chatSessions = JSON.parse(localStorage.getItem('nino_jee_chats') || '[]'); } catch { chatSessions = []; }
-  startNewChat();
-  initSplitResizer();
-});
+function toggleSidebar() { $('sidebar').classList.toggle('open'); }
 
-function toggleSidebar() {
-  const o = $('sidebar').classList.toggle('open');
-  $('backdrop').style.opacity = o ? '1' : '0';
-  $('backdrop').style.pointerEvents = o ? 'auto' : 'none';
-  AudioFx.click();
-}
-
-function toggleEdgeDrawer() {
-  $('edge-drawer').classList.toggle('open');
-  AudioFx.click();
-}
-
-function startNewChat() {
-  currentChatId = 'jee_' + Date.now();
+function startFreshChat() {
+  currentChat = 'jee_' + Date.now();
   chat.innerHTML = '';
-  welcome.classList.remove('hidden');
+  home.classList.remove('hidden');
   chat.classList.add('hidden');
-  closeTestSection();
-  renderSidebar();
+  $('bottom-bar').classList.add('hidden');
+  closeTestDrawer();
+  updateHistory();
 }
 
-function renderSidebar() {
-  const hist = $('history');
-  if(!chatSessions.length) { hist.innerHTML = '<div style="padding:20px;text-align:center;font-size:13px;color:var(--dm)">No solved doubts yet.</div>'; return; }
-  hist.innerHTML = '<div class="section-tag">Previous Doubts</div>';
-  chatSessions.forEach(s => {
-    const r = document.createElement('div');
-    r.className = 'hist-row' + (s.id === currentChatId ? ' active' : '');
-    r.innerHTML = `<span class="t">${s.title}</span><span class="del" onclick="deleteSession('${s.id}', event)">✕</span>`;
-    r.onclick = () => loadSession(s.id);
-    hist.appendChild(r);
+function updateHistory() {
+  const h = $('history');
+  h.innerHTML = '';
+  sessions.forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'hist-item' + (s.id === currentChat ? ' active' : '');
+    el.innerHTML = `<span>${s.title}</span><span class="del" onclick="deleteSession('${s.id}', event)">✕</span>`;
+    el.onclick = () => switchSession(s.id);
+    h.appendChild(el);
   });
 }
 
 function deleteSession(id, ev) {
   ev.stopPropagation();
-  chatSessions = chatSessions.filter(s => s.id !== id);
-  localStorage.setItem('nino_jee_chats', JSON.stringify(chatSessions));
-  if(currentChatId === id) startNewChat(); else renderSidebar();
+  sessions = sessions.filter(s => s.id !== id);
+  if (currentChat === id) startFreshChat(); else updateHistory();
 }
 
-function loadSession(id) {
-  currentChatId = id;
-  renderSidebar();
-  welcome.classList.add('hidden');
+function switchSession(id) {
+  currentChat = id;
+  updateHistory();
+  home.classList.add('hidden');
   chat.classList.remove('hidden');
-  chat.innerHTML = '';
-  fetch(`/api/chat/${id}`).then(r => r.json()).then(d => {
-    if(d.history) d.history.forEach(m => appendMessage(m.content, m.role === 'model' ? 'ai' : 'user'));
-  }).catch(() => {});
+  $('bottom-bar').classList.remove('hidden');
+  attachComposerToBottom();
 }
 
-function quickPrompt(t) { input.value = t; handleSend(); }
+function fillPrompt(p) {
+  input.value = p;
+  submitMessage();
+}
 
-function appendMessage(text, sender) {
-  welcome.classList.add('hidden');
-  chat.classList.remove('hidden');
-  const m = document.createElement('div');
-  m.className = `msg ${sender}`;
-
-  if(sender === 'ai') {
-    // Check if test payload is embedded
-    if(text.includes('"questions"') && text.includes('"correct"')) {
-      try {
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if(jsonMatch) {
-          const payload = JSON.parse(jsonMatch[0]);
-          launchCbtFromPayload(payload);
-          text = payload.chatResponse || "I've structured a Computer Based Test for you based on this topic. See the split panel on the right.";
-        }
-      } catch(e){}
-    }
-
-    const parsedHtml = marked.parse(parseFormulas(text));
-    m.innerHTML = `
-      <span class="mark">
-        <svg viewBox="0 0 40 40"><ellipse cx="20" cy="20" rx="13.5" ry="5.4" transform="rotate(-32 20 20)" fill="none" stroke="#fff" stroke-width="2.5"/><circle cx="20" cy="20" r="3.7" fill="#fff"/></svg>
-      </span>
-      <div class="ai-text rich">${parsedHtml}</div>
-    `;
-  } else {
-    m.innerHTML = `<div class="bubble">${text}</div>`;
+function onFilePicked() {
+  const f = $('file-picker').files[0];
+  if(f) {
+    attachedFile = f;
+    input.placeholder = `Attached: ${f.name}. Ask your doubt…`;
+    sendBtn.classList.remove('disabled');
   }
-  chat.appendChild(m);
-  chat.scrollTop = chat.scrollHeight;
 }
 
-// Composer Handlers
 input.addEventListener('input', () => {
   input.style.height = 'auto';
   input.style.height = Math.min(input.scrollHeight, 140) + 'px';
-  sendBtn.classList.toggle('off', !input.value.trim() && !selectedFile);
+  sendBtn.classList.toggle('disabled', !input.value.trim() && !attachedFile);
 });
 
 input.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitMessage(); }
 });
 
-function onFileSelected() {
-  const f = $('file-input').files[0];
-  if(f) {
-    selectedFile = f;
-    $('file-name-label').textContent = f.name;
-    $('file-preview-strip').classList.remove('hidden');
-    sendBtn.classList.remove('off');
+function attachComposerToBottom() {
+  const hub = document.querySelector('.hero-input-hub');
+  if (hub && $('bottom-bar').children.length === 0) {
+    $('bottom-bar').appendChild(hub);
   }
 }
 
-function clearAttachment() {
-  selectedFile = null;
-  $('file-input').value = '';
-  $('file-preview-strip').classList.add('hidden');
-  sendBtn.classList.toggle('off', !input.value.trim());
-}
+async function submitMessage() {
+  const text = input.value.trim();
+  if(!text && !attachedFile) return;
 
-async function handleSend() {
-  const q = input.value.trim();
-  if(!q && !selectedFile) return;
-  AudioFx.click();
+  // Switch from Home to Chat View seamlessly
+  home.classList.add('hidden');
+  chat.classList.remove('hidden');
+  $('bottom-bar').classList.remove('hidden');
+  attachComposerToBottom();
 
-  appendMessage(q || 'Attached Diagram/Question', 'user');
+  // Add User Message
+  appendBubble(text || 'Attached Question/Diagram', 'user');
   input.value = ''; input.style.height = 'auto';
-  sendBtn.classList.add('off');
-  $('capsule-glow').classList.add('busy');
-  $('dynamic-island').classList.add('busy');
-  $('island-label').textContent = 'Nino is formulating JEE proof…';
+  sendBtn.classList.add('disabled');
 
-  if(!chatSessions.find(s => s.id === currentChatId)) {
-    chatSessions.unshift({ id: currentChatId, title: q.slice(0, 30) || 'JEE Problem' });
-    localStorage.setItem('nino_jee_chats', JSON.stringify(chatSessions));
-    renderSidebar();
+  // Dynamic Island: State -> Thinking
+  $('island').classList.add('busy');
+  $('island-text').textContent = 'Solving step by step…';
+
+  if (!sessions.find(s => s.id === currentChat)) {
+    sessions.unshift({ id: currentChat, title: text.slice(0, 26) || 'JEE Doubt' });
+    updateHistory();
   }
 
   const fd = new FormData();
-  fd.append('name', currentChatId);
-  fd.append('interest', q);
-  fd.append('followup', q);
-  if(selectedFile) fd.append('file', selectedFile);
-  clearAttachment();
+  fd.append('name', currentChat);
+  fd.append('interest', text);
+  fd.append('followup', text);
+  if (attachedFile) fd.append('file', attachedFile);
+  attachedFile = null;
+  input.placeholder = "Ask Nino anything…";
 
   try {
     const res = await fetch('/guide', { method: 'POST', body: fd });
     const data = await res.json();
-    $('capsule-glow').classList.remove('busy');
-    $('dynamic-island').classList.remove('busy');
-    $('island-label').textContent = 'Nino · JEE Advisory Active';
+    
+    // Dynamic Island: Back to Idle
+    $('island').classList.remove('busy');
+    $('island-text').textContent = 'Nino · Ready for your doubt';
 
-    if(data.isTestTrigger && data.questions) {
-      launchCbtFromPayload({ questions: data.questions, testTitle: data.testTitle });
+    if (data.isTestTrigger && data.questions) {
+      launchTest(data.testTitle || 'JEE Mock Drill', data.questions);
     }
-    appendMessage(data.response || data.chatResponse || 'Step-by-step resolution ready.', 'ai');
+    appendBubble(data.response || data.chatResponse || 'Solution prepared.', 'ai');
   } catch(err) {
-    $('capsule-glow').classList.remove('busy');
-    $('dynamic-island').classList.remove('busy');
-    $('island-label').textContent = 'Error connecting to tutor';
-    appendMessage('Network anomaly detected. Verify your local server connection.', 'ai');
+    $('island').classList.remove('busy');
+    $('island-text').textContent = 'Connection error';
+    appendBubble('Unable to reach AI tutor. Check your internet or local server.', 'ai');
   }
 }
 
-// Computer Based Test (CBT) Engine
-function launchCbtFromPayload(payload) {
-  cbtQuestions = (payload.questions || []).map(q => ({ ...q, selected: null }));
-  isCbtReview = false;
-  $('test-header-title').textContent = payload.testTitle || 'JEE Speed Drill';
-  $('test-section').classList.add('open');
-  if(window.innerWidth >= 768) {
-    $('slider').classList.remove('hidden');
-    $('test-section').style.width = '45%';
+function appendBubble(content, role) {
+  const b = document.createElement('div');
+  b.className = `msg ${role}`;
+  if (role === 'ai') {
+    b.innerHTML = `
+      <div class="avatar">⚡</div>
+      <div class="ai-content">${marked.parse(renderMath(content))}</div>
+    `;
   } else {
-    $('test-section').classList.add('shown');
+    b.innerHTML = `<div class="bubble">${content}</div>`;
   }
-  startCbtClock(15 * 60);
-  renderCbtQuestions();
-  AudioFx.success();
+  chat.appendChild(b);
+  chat.scrollTop = chat.scrollHeight;
 }
 
-function startCbtClock(secs) {
-  clearInterval(cbtTimer);
-  cbtRemaining = secs;
-  const tick = () => {
-    const m = Math.floor(cbtRemaining / 60), s = cbtRemaining % 60;
-    $('cbt-countdown').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-    if(cbtRemaining <= 0) { clearInterval(cbtTimer); submitCbtExam(); }
-    cbtRemaining--;
-  };
-  tick(); cbtTimer = setInterval(tick, 1000);
+// Minimal Test Slide-In
+let activeQuestions = [];
+function launchTest(title, questions) {
+  activeQuestions = questions.map(q => ({ ...q, sel: null }));
+  $('test-title').textContent = title;
+  $('test-drawer').classList.add('open');
+  renderQuestions();
+  startTimer(15 * 60);
 }
 
-function renderCbtQuestions() {
-  const vp = $('test-viewport');
-  vp.innerHTML = '';
-  cbtQuestions.forEach((q, idx) => {
-    const card = document.createElement('div');
-    card.className = 'q-card';
-    card.innerHTML = `
-      <div class="q-top">
-        <div class="q-badges">
-          <span class="q-num">Q${idx + 1}</span>
-          <span class="marking-tag">+4 / -1</span>
-        </div>
-        <button class="btn sm" onclick="askAboutQuestion(${idx})" style="font-size:12px">Explain 💡</button>
-      </div>
-      <div class="q-text">${parseFormulas(q.question)}</div>
-      <div class="opts">
-        ${q.options.map((opt, oi) => {
-          let cls = 'opt';
-          if(isCbtReview) {
-            if(oi === q.correct) cls += ' right';
-            else if(q.selected === oi) cls += ' wrong';
-          } else if(q.selected === oi) cls += ' sel';
-          return `<button class="${cls}" onclick="pickOption(${idx}, ${oi})"><span class="key">${String.fromCharCode(65+oi)}</span><span>${parseFormulas(opt)}</span></button>`;
-        }).join('')}
+function closeTestDrawer() {
+  clearInterval(testTimer);
+  $('test-drawer').classList.remove('open');
+}
+
+function renderQuestions() {
+  const b = $('test-body');
+  b.innerHTML = '';
+  activeQuestions.forEach((q, qi) => {
+    const d = document.createElement('div');
+    d.className = 'test-q-card';
+    d.innerHTML = `
+      <div style="font-weight:700;margin-bottom:8px">Q${qi+1}. ${renderMath(q.question)}</div>
+      <div>
+        ${q.options.map((opt, oi) => `
+          <div class="td-opt ${q.sel === oi ? 'selected' : ''}" onclick="selectOpt(${qi}, ${oi})">
+            <b>${String.fromCharCode(65+oi)}.</b> <span>${renderMath(opt)}</span>
+          </div>
+        `).join('')}
       </div>
     `;
-    vp.appendChild(card);
+    b.appendChild(d);
   });
-  updateAnsweredCount();
+  const answered = activeQuestions.filter(q => q.sel !== null).length;
+  $('test-progress-label').textContent = `${answered} / ${activeQuestions.length} Answered`;
 }
 
-function pickOption(qi, oi) {
-  if(isCbtReview) return;
-  AudioFx.click();
-  cbtQuestions[qi].selected = cbtQuestions[qi].selected === oi ? null : oi;
-  renderCbtQuestions();
+function selectOpt(qi, oi) {
+  activeQuestions[qi].sel = activeQuestions[qi].sel === oi ? null : oi;
+  renderQuestions();
 }
 
-function updateAnsweredCount() {
-  const ans = cbtQuestions.filter(q => q.selected !== null).length;
-  $('answered-stat').textContent = `${ans} / ${cbtQuestions.length} Answered`;
+function startTimer(s) {
+  clearInterval(testTimer);
+  let rem = s;
+  const tick = () => {
+    const m = Math.floor(rem / 60), sec = rem % 60;
+    $('test-clock').textContent = `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    if (rem <= 0) { clearInterval(testTimer); evaluateTest(); }
+    rem--;
+  };
+  tick(); testTimer = setInterval(tick, 1000);
 }
 
-function submitCbtExam() {
-  clearInterval(cbtTimer);
-  isCbtReview = true;
-  let correct = 0, wrong = 0;
-  cbtQuestions.forEach(q => {
-    if(q.selected === q.correct) correct++;
-    else if(q.selected !== null) wrong++;
-  });
-  const score = (correct * 4) - (wrong * 1);
-  const totalMarks = cbtQuestions.length * 4;
-
-  const vp = $('test-viewport');
-  const analytics = document.createElement('div');
-  analytics.className = 'analytics-card';
-  analytics.innerHTML = `
-    <h3 style="margin-bottom:12px;font-size:16px">Diagnostic Performance Summary</h3>
-    <div class="score-row">
-      <div class="score-stat">${score}<small> / ${totalMarks}</small></div>
-      <div style="font-size:14px;line-height:1.6">
-        <div>✅ Correct: <b>${correct}</b></div>
-        <div>❌ Incorrect: <b style="color:var(--red)">${wrong}</b></div>
-        <div>🎯 Accuracy: <b>${Math.round((correct/(correct+wrong||1))*100)}%</b></div>
-      </div>
-    </div>
-  `;
-  vp.prepend(analytics);
-  renderCbtQuestions();
-  $('submit-test-btn').classList.add('hidden');
-  AudioFx.success();
+function evaluateTest() {
+  clearInterval(testTimer);
+  let correct = 0;
+  activeQuestions.forEach(q => { if(q.sel === q.correct) correct++; });
+  alert(`Test Completed! Score: ${correct} / ${activeQuestions.length}`);
+  closeTestDrawer();
 }
 
-function askAboutQuestion(idx) {
-  const q = cbtQuestions[idx];
-  quickPrompt(`In Question ${idx+1}: "${q.question}", I need a thorough concept breakdown. Where is the negative marking trap?`);
-}
-
-function closeTestSection() {
-  clearInterval(cbtTimer);
-  $('test-section').classList.remove('open', 'shown');
-  $('slider').classList.add('hidden');
-}
-
-// Split Resizer Logic
-function initSplitResizer() {
-  let down = false;
-  const slider = $('slider');
-  slider.addEventListener('mousedown', () => { down = true; slider.classList.add('dragging'); });
-  document.addEventListener('mousemove', e => {
-    if(!down) return;
-    const pct = ((window.innerWidth - e.clientX) / window.innerWidth) * 100;
-    if(pct > 25 && pct < 70) $('test-section').style.width = pct + '%';
-  });
-  document.addEventListener('mouseup', () => { down = false; slider.classList.remove('dragging'); });
-}
-
-// Modals
-const openModal = id => $(id).classList.add('show');
-const closeModal = id => $(id).classList.remove('show');
-function openProfile() { openModal('profile-modal'); toggleSidebar(); }
-function openSettings() { openModal('settings-modal'); toggleSidebar(); }
-function openFeedback() { openModal('feedback-modal'); toggleSidebar(); }
-
-function saveSettings() {
-  const k = $('custom-api-key').value.trim();
-  if(k) localStorage.setItem('nino_user_key', k);
-  closeModal('settings-modal');
-  AudioFx.success();
-}
-
-function sendFeedback() {
-  const txt = $('feedback-text').value.trim();
-  if(!txt) return;
-  fetch('/api/feedback', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ message: txt, chat: currentChatId })
-  }).catch(()=>{});
-  closeModal('feedback-modal');
-  $('feedback-text').value = '';
-  AudioFx.success();
-}
+window.addEventListener('DOMContentLoaded', startFreshChat);
 </script>
 </body>
 </html>
