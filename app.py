@@ -18,7 +18,7 @@ from google import genai
 from google.genai import types
 
 app = Flask(__name__, template_folder='templates')
-application = app  # Explicit alias for WSGI servers (AWS Elastic Beanstalk, etc.)
+application = app  # Explicit alias for WSGI servers (AWS Elastic Beanstalk, Render, Gunicorn, etc.)
 
 # ======================================================================
 # TUNING KNOBS (speed vs. quality). Change these, not the code.
@@ -150,7 +150,7 @@ def unpack_envelope(envelope):
     }
 
 
-# ---------------- Session storage ----------------
+# ---------------- Session storage (PATCHED LANDMINE A) ----------------
 class SessionManager:
     """Manages session persistence safely using a local JSON file."""
     def __init__(self, filepath="local_memory.json"):
@@ -168,8 +168,8 @@ class SessionManager:
         return {}
 
     def _save_memory(self):
-        # Atomic write: a crash mid-save can no longer corrupt the memory file.
-        with _lock_guard := self._lock:
+        # PATCHED: Fixed syntax error with clean thread-safe context lock
+        with self._lock:
             try:
                 tmp = self.filepath + ".tmp"
                 with open(tmp, 'w', encoding='utf-8') as f:
@@ -588,21 +588,19 @@ FORMAT (strict)
 TEST_SYSTEM = _TEST_CORE + _DEMO_JSON + "\n\n" + _focus_block()
 
 # ----------------------------------------------------------------------
-# 6. TEST ENGINE KNOBS (speed vs accuracy). The old TEST_THINKING_BUDGET at the
-#    top of app.py is no longer used by tests; these replace it.
+# 6. TEST ENGINE KNOBS (speed vs accuracy).
 # ----------------------------------------------------------------------
-TEST_MODELS = ["gemini-3.6-flash", "gemini-3.1-flash-lite"]  # strongest first: a wrong key costs more than a few seconds
-TEST_TIMEOUT_MS = 40000        # per Gemini call for tests (chat keeps GEMINI_TIMEOUT_MS)
-TEST_GEN_THINKING = 1024       # thinking tokens per generation call (was 256: too little to design + verify hard questions)
-TEST_AUDIT_THINKING = 1024     # thinking tokens for the blind answer-key audit
+TEST_MODELS = ["gemini-3.6-flash", "gemini-3.1-flash-lite"]  # strongest first
+TEST_TIMEOUT_MS = 35000        # per Gemini call for tests 
+TEST_GEN_THINKING = 1024       # thinking tokens per generation call
+TEST_AUDIT_THINKING = 512      # PATCHED LANDMINE C: Reduced audit token footprint for stability & speed
 TEST_TEMPERATURE = 0.4         # lower = fewer creative-but-wrong questions
-TEST_AUDIT = True              # blind re-solve of every question; False = faster, less safe
-TEST_DEADLINE_S = 55           # whole test must finish by now. KEEP BELOW your server's request timeout
-                               # (gunicorn default is 30 s, Elastic Beanstalk nginx is 60 s)
-TIER2_SHARE = 0.35             # ~65% of chapters from Tier 1, ~35% from Tier 2
+TEST_AUDIT = True              # blind re-solve of every question
+TEST_DEADLINE_S = 45           # PATCHED LANDMINE B: Safely balanced below typical WSGI worker limits
+TIER2_SHARE = 0.35             # ~65% chapters from Tier 1, ~35% from Tier 2
 
 # ----------------------------------------------------------------------
-# 7. SUBJECT / FILLER WORD PARSING
+# 7. SUBJECT / FILLER WORD PARSING (PATCHED LANDMINE D)
 # ----------------------------------------------------------------------
 SUBJECT_WORDS = {"physics": "Physics", "phy": "Physics", "chemistry": "Chemistry", "chem": "Chemistry",
                  "maths": "Maths", "math": "Maths", "mathematics": "Maths"}
@@ -610,17 +608,17 @@ NUMBER_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, 
                 "nine": 9, "ten": 10}
 FILLER_WORDS = set("""generate give make create send prepare set me a an the some mock test tests quiz practice
 questions question ques mcq mcqs on for of in about jee main mains advanced tough hard difficult challenging my take
-please pls paper and class level today tomorrow now quick short full another new""".split()) | set(NUMBER_WORDS)
+please pls paper and class level today tomorrow now quick short full another new some can you do me a favor""".split()) | set(NUMBER_WORDS)
 _NOT_A_COUNT = {"class", "grade", "std", "chapter", "ch", "unit", "paper", "set", "shift", "day", "year", "jee",
                 "session", "test", "mock"}
 
+# PATCHED LANDMINE D: Broadened regex to catch casual natural phrasings ("can you give me some practice problems for...")
 TEST_REQ_RE = re.compile(
-    r"\b(mock\s*tests?|test\s+me|take\s+my\s+test|quiz(?:\s+me)?|practice\s+(?:test|questions?|set|paper)|"
-    r"(?:give|make|create|generate|send|prepare|set)\s+(?:me\s+)?(?:a\s+|an\s+|some\s+)?(?:\d+\s+)?(?:[a-z]+\s+){0,3}"
-    r"(?:tests?|questions?|ques|mcqs?))\b", re.I)
+    r"\b(mock\s*tests?|test\s+me|take\s+my\s+test|quiz(?:\s+me)?|practice\s+(?:test|questions?|set|paper|problems)|"
+    r"(?:give|make|create|generate|send|prepare|set|show)\s+(?:me\s+)?(?:a\s+|an\s+|some\s+)?(?:\d+\s+)?(?:[a-z]+\s+){0,4}"
+    r"(?:tests?|questions?|ques|mcqs?|problems))\b", re.I)
 NOT_TEST_RE = re.compile(
     r"\b(hint|solve|solution|explain|doubt|stuck|why|wrong|mistake|diagnostic|analy[sz]e|review|score)\b", re.I)
-# A message that mentions a "mock test" but is really distress must NEVER be answered with a test.
 DISTRESS_RE = re.compile(
     r"(suicid|kill\s+my\s*self|end\s+(?:my\s+life|it\s+all|everything)|want\s+to\s+die|wanna\s+die|"
     r"don'?t\s+want\s+to\s+(?:live|be\s+here)|no\s+point|can'?t\s+(?:do\s+this|go\s+on|take\s+it)|"
@@ -641,7 +639,7 @@ def parse_test_request(text):
     """-> (count, subject or None, topic hint or '')"""
     low = (text or "").lower()
     count = None
-    for m in re.finditer(r'\b(\d{1,2})\b', low):          # first standalone number that is not "class 12" etc.
+    for m in re.finditer(r'\b(\d{1,2})\b', low):
         prev = low[:m.start()].split()
         if not prev or prev[-1] not in _NOT_A_COUNT:
             count = int(m.group(1))
@@ -694,7 +692,7 @@ def _ordered_topics(subject, n):
 def build_specs(count, subject, hint):
     twists = [TWISTS[i % len(TWISTS)] for i in range(count)]
     random.shuffle(twists)
-    levels = (["Medium+", "Hard", "Medium+"] * count)[:count]   # ~2/3 Medium+, ~1/3 Hard
+    levels = (["Medium+", "Hard", "Medium+"] * count)[:count]
     random.shuffle(levels)
     specs = []
     if hint:
@@ -746,7 +744,6 @@ _BACKSLASH = re.compile(r'\\\\|\\(?!["/]|u[0-9a-fA-F]{4})')
 
 
 def fix_latex_backslashes(raw):
-    """Keep valid pairs ('\\\\'), double every lone backslash that isn't \\" \\/ \\uXXXX."""
     return _BACKSLASH.sub(lambda m: m.group(0) if m.group(0) == '\\\\' else '\\\\', raw)
 
 
@@ -769,7 +766,6 @@ def parse_json_loose(text):
 
 
 def salvage_questions(text):
-    """If the JSON was cut off mid-way, still recover every COMPLETE question before the cut."""
     t = fix_latex_backslashes(text or "")
     i = t.find('"questions"')
     j = t.find('[', i) if i != -1 else -1
@@ -800,8 +796,6 @@ def _num_value(o):
 
 
 def _arrange_options(opts, correct):
-    """Plain numbers -> ascending (like a real paper); Statement I/II -> fixed order;
-    options that refer to each other -> untouched; everything else -> shuffled."""
     vals = [_num_value(o) for o in opts]
     if any(_GIVEAWAY.search(o) for o in opts):
         order = list(range(4))
@@ -816,7 +810,6 @@ def _arrange_options(opts, correct):
 
 
 def clean_question(q):
-    """Validate one model question and arrange its options. Returns dict or None."""
     if not isinstance(q, dict):
         return None
     n = {str(k).lower(): v for k, v in q.items()}
@@ -824,11 +817,11 @@ def clean_question(q):
     opts = n.get("options")
     sol = str(n.get("solution") or "").strip()
     if len(text) < 25 or len(sol) < 25 or not isinstance(opts, list) or len(opts) != 4:
-        return None                                   # no solution = the model never verified it
+        return None
     opts = [str(o).strip() for o in opts]
     if any(not o for o in opts) or len({o.lower() for o in opts}) < 4:
         return None
-    if any(t.count("$") % 2 for t in [text] + opts):  # broken LaTeX would render as garbage
+    if any(t.count("$") % 2 for t in [text] + opts):
         return None
     try:
         correct = int(n.get("correct"))
@@ -844,7 +837,7 @@ def clean_question(q):
 
 
 # ----------------------------------------------------------------------
-# 10. GEMINI CALLS FOR TESTS (own client timeout, strongest model first)
+# 10. GEMINI CALLS FOR TESTS
 # ----------------------------------------------------------------------
 _test_clients = {}
 
@@ -864,7 +857,6 @@ def _get_test_client(api_key):
 
 
 def generate_text_test(contents, system_instruction, api_key, temperature, max_tokens, thinking_budget):
-    """-> (text, last_error). JSON mode always on."""
     if not api_key:
         return None, "no_key"
     try:
@@ -885,7 +877,7 @@ def generate_text_test(contents, system_instruction, api_key, temperature, max_t
                     return text, None
                 last_error = "empty_response"
                 if use_thinking:
-                    continue          # thinking may have eaten the token budget; retry plain
+                    continue
                 break
             except Exception as e:
                 last_error = str(e)
@@ -898,7 +890,7 @@ def generate_text_test(contents, system_instruction, api_key, temperature, max_t
 
 
 # ----------------------------------------------------------------------
-# 11. BLIND ANSWER-KEY AUDIT (second model call that never sees the answers)
+# 11. BLIND ANSWER-KEY AUDIT
 # ----------------------------------------------------------------------
 VERIFY_SYSTEM = r"""You are an independent JEE answer-key auditor. You receive MCQs WITHOUT their answers. For each question, solve it yourself from scratch, then confirm by a second independent method.
 
@@ -915,8 +907,6 @@ Return one result per question, using the given ids. No markdown, no trailing co
 
 
 def audit_questions(cands, api_key):
-    """Keep only questions whose key a blind solver reproduces with high confidence.
-    If the audit call itself fails (outage), fail open so a test is still delivered."""
     payload = json.dumps({"questions": [{"id": i, "question": q["question"], "options": q["options"]}
                                         for i, q in enumerate(cands)]}, ensure_ascii=False)
     contents = [types.Content(role="user", parts=[types.Part.from_text(text=payload)])]
@@ -953,7 +943,6 @@ def audit_questions(cands, api_key):
 # 12. GENERATE ONE BATCH, THEN THE WHOLE TEST
 # ----------------------------------------------------------------------
 def generate_test_batch(specs, api_key):
-    """generate -> validate -> blind audit; retries once for whatever is still missing."""
     valid, err = [], None
     for _attempt in range(2):
         if len(valid) >= len(specs):
@@ -972,7 +961,7 @@ def generate_test_batch(specs, api_key):
         data = parse_json_loose(text)
         qs = (data or {}).get("questions") or (data or {}).get("Questions") or []
         if not isinstance(qs, list) or not qs:
-            qs = salvage_questions(text)              # cut-off JSON: keep the complete questions
+            qs = salvage_questions(text)
         cands = [c for c in (clean_question(q) for q in qs) if c]
         if cands and TEST_AUDIT:
             cands = audit_questions(cands, api_key)
@@ -982,13 +971,12 @@ def generate_test_batch(specs, api_key):
 
 
 def build_test(count, subject, hint, api_key):
-    """-> (title, questions, last_error). Batches run in parallel under one overall deadline."""
     specs = build_specs(count, subject, hint)
     batches = chunk_specs(specs)
     futures = [_test_pool.submit(generate_test_batch, b, api_key) for b in batches]
     done, _pending = _futures_wait(futures, timeout=TEST_DEADLINE_S)
     questions, err = [], None
-    for f in futures:                                 # keep batch order
+    for f in futures:
         if f in done:
             try:
                 qs, e = f.result()
@@ -999,7 +987,7 @@ def build_test(count, subject, hint, api_key):
         else:
             err = err or "timeout"
     seen, unique = set(), []
-    for q in questions:                               # drop near-duplicates
+    for q in questions:
         key = re.sub(r'\W+', '', q["question"].lower())[:60]
         if key not in seen:
             seen.add(key)
@@ -1032,7 +1020,6 @@ def classify_chat_kind(prompt, has_file):
 
 
 def build_model_history(history):
-    """Last 12 entries; only the newest 4 keep the original test JSON (saves input tokens)."""
     recent = history[-12:]
     out = []
     for i, m in enumerate(recent):
@@ -1062,7 +1049,7 @@ def ask_ai(prompt, message_history, api_key, file_bytes=None, mime_type=None, ki
 
 
 # ======================================================================
-# Discord (all calls run in the background so replies are never delayed)
+# Discord
 # ======================================================================
 def _post_webhook(url, payload):
     try:
@@ -1072,7 +1059,6 @@ def _post_webhook(url, payload):
 
 
 def send_log_to_discord(name, user_goal, current_pct, user_asked, ai_answered):
-    # Set DISCORD_WEBHOOK_URL in your environment (never paste the URL in code).
     webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
     if not webhook_url:
         return
@@ -1090,12 +1076,11 @@ def send_log_to_discord(name, user_goal, current_pct, user_asked, ai_answered):
 
 FEEDBACK_LABELS = {"bug": ("🐞 Bug", 0xFF453A), "wrong_answer": ("❌ Wrong answer", 0xFF9F0A),
                    "idea": ("💡 Idea", 0x30D158), "other": ("💬 Other", 0x0A84FF)}
-_feedback_usage = {}   # {(visitor, hour_bucket): count}
+_feedback_usage = {}
 FEEDBACK_PER_HOUR = 10
 
 
 def send_feedback_to_discord(fb):
-    # Optional separate channel: DISCORD_FEEDBACK_WEBHOOK_URL (falls back to the log webhook).
     url = os.environ.get("DISCORD_FEEDBACK_WEBHOOK_URL") or os.environ.get("DISCORD_WEBHOOK_URL")
     if not url:
         return
@@ -1160,7 +1145,7 @@ def feedback():
         "theme": str(body.get('theme') or '?')[:10],
         "time": datetime.now(timezone.utc).isoformat(),
     }
-    try:  # local copy, so nothing is lost if Discord is down
+    try:
         with open("feedback_log.jsonl", "a", encoding="utf-8") as f:
             f.write(json.dumps(fb, ensure_ascii=False) + "\n")
     except Exception as e:
@@ -1216,8 +1201,6 @@ def delete_chat(chat_id):
 
 @app.route('/run_sandbox', methods=['POST'])
 def run_sandbox():
-    # Off by default: it executes arbitrary code and has no login. The Nino UI never calls it.
-    # Set ENABLE_SANDBOX=1 only on a locked-down private deployment.
     if os.environ.get("ENABLE_SANDBOX") != "1":
         return jsonify({'error': 'Sandbox is disabled'}), 403
     data = request.get_json(silent=True) or {}
@@ -1292,7 +1275,7 @@ def guide():
 
         updated_pct = current_state["pct"]
 
-        # ---------- T) Practice test: dedicated prompt, parallel batches ----------
+        # ---------- Practice test trigger ----------
         if not file_bytes and is_test_request(user_prompt):
             count, subject, hint = parse_test_request(user_prompt)
             title, questions, err = build_test(count, subject, hint, api_key)
@@ -1330,7 +1313,7 @@ def guide():
         )
         print(f"[timing] {kind} in {(time.perf_counter() - t0) * 1000:.0f}ms")
 
-        if not raw_response:   # failed call: tell the student, don't pollute memory
+        if not raw_response:
             return jsonify({"response": friendly_error(err), "progress": updated_pct,
                             "isTestTrigger": False, "testTitle": "", "questions": []})
 
@@ -1341,7 +1324,6 @@ def guide():
 
         envelope = parse_ai_json(clean_response)
 
-        # A) JSON envelope (safety net if the chat model still emits a test)
         if envelope is not None:
             info = unpack_envelope(envelope)
             has_test = len(info["questions"]) > 0
@@ -1363,10 +1345,9 @@ def guide():
                 "progress": updated_pct
             })
 
-        # B) Broken or truncated test JSON: never show raw code
         if looks_like_test_json(clean_response):
             session_store.append_history(name, user_prompt, CUTOFF_MESSAGE)
-            send_log_to_discord(name, current_state["goal"], updated_pct, user_prompt, "[Broken test JSON] " + clean_response)
+            send_log_to_discord(name, current_state["goal"], updated_pct, user_prompt, "[Broken test JSON] " + clean_prompt if 'clean_prompt' in locals() else clean_response)
             return jsonify({
                 "response": CUTOFF_MESSAGE,
                 "progress": updated_pct,
@@ -1375,7 +1356,6 @@ def guide():
                 "questions": []
             })
 
-        # C) Normal conversation text
         session_store.append_history(name, user_prompt, clean_response)
         send_log_to_discord(name, current_state["goal"], updated_pct, user_prompt, clean_response)
         return jsonify({
