@@ -314,6 +314,14 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
 .fade-t{top:0;height:104px;background:linear-gradient(color-mix(in srgb,var(--bg) 40%,transparent),transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);-webkit-mask-image:linear-gradient(#000 40%,transparent);mask-image:linear-gradient(#000 40%,transparent)}
 .fade-b{bottom:var(--ch,120px);height:46px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);-webkit-mask-image:linear-gradient(transparent,#000 60%);mask-image:linear-gradient(transparent,#000 60%)}
 .home .fade{display:none}
+
+/* ---- v6.1: one message at a time ---- */
+.gw.busy #send-btn{opacity:.6;filter:none}
+.gw.busy #send-btn svg{display:none}
+.gw.busy #send-btn:after{content:'';width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;animation:rot .8s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+.gw.nudge{animation:nudge .38s var(--ease)}
+@keyframes nudge{20%{transform:translateX(-6px)}45%{transform:translateX(5px)}70%{transform:translateX(-3px)}}
 </style>
 </head>
 <body class="home"><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="nino-logo" viewBox="0 0 40 40"><defs><linearGradient id="nl-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b9bff"/><stop offset="1" stop-color="#1fcfb8"/></linearGradient><linearGradient id="nl-h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><rect width="40" height="40" rx="12" fill="url(#nl-g)"/><rect width="40" height="40" rx="12" fill="url(#nl-h)"/><ellipse cx="20" cy="20" rx="13.5" ry="5.4" transform="rotate(-32 20 20)" fill="none" stroke="#fff" stroke-opacity=".92" stroke-width="2.2"/><circle cx="20" cy="20" r="3.7" fill="#fff"/><path d="M31 8.2l1.35 3.45 3.45 1.35-3.45 1.35L31 17.8l-1.35-3.45L26.2 13l3.45-1.35z" fill="#fff"/></symbol></defs></svg>
@@ -517,7 +525,7 @@ async function saveSettings(){
   }catch{b.textContent='Couldn’t save. Try again.';setTimeout(()=>{b.textContent=o},1800)}
 }
 function toggleMenu(){const o=sidebar.classList.toggle('open');backdrop.classList.toggle('show',o)}
-function useSuggestion(t){input.value=t;send()}
+function useSuggestion(t){if(glow.classList.contains('busy'))return;input.value=t;send()}
 function triggerFilePicker(){fileUploader.click()}
 function setFile(f){
   selectedFileObject=f;$('file-name').textContent=f.name||'pasted_image.png';
@@ -526,7 +534,7 @@ function setFile(f){
 }
 function handleFileSelection(){if(fileUploader.files&&fileUploader.files[0])setFile(fileUploader.files[0])}
 function clearSelectedFile(){selectedFileObject=null;fileUploader.value="";filePreview.classList.add('hidden');updateSendState()}
-function updateSendState(){sendBtn.classList.toggle('off',!input.value.trim()&&!selectedFileObject)}
+function updateSendState(){sendBtn.classList.toggle('off',(!input.value.trim()&&!selectedFileObject)||glow.classList.contains('busy'))}
 function autoGrow(){input.style.height='auto';input.style.height=Math.min(input.scrollHeight,140)+'px'}
 function editMessage(b){input.value=decodeURIComponent(b.getAttribute('data-raw'));autoGrow();updateSendState();input.focus()}
 
@@ -655,6 +663,7 @@ const TESTS=[
 TESTS.forEach(t=>{const b=document.createElement('button');b.className='chip';b.setAttribute('role','listitem');b.innerHTML=`<i style="background:${t.c}"></i>${t.n}<small>${t.s}</small>`;b.onclick=()=>useSuggestion(t.p);$('chips').appendChild(b)});
 
 async function send(){
+  if(glow.classList.contains('busy')){glow.classList.remove('nudge');void glow.offsetWidth;glow.classList.add('nudge');return}
   const text=input.value.trim();if(!text&&!selectedFileObject)return;
   const file=selectedFileObject;input.value="";input.style.height="auto";showWelcome(false);
   const imgUrl=file&&file.type&&file.type.startsWith('image/')?URL.createObjectURL(file):null;
@@ -665,18 +674,18 @@ async function send(){
   }
   const tId="think-"+Date.now(),t=document.createElement('div');t.id=tId;t.className='msg ai';
   t.innerHTML=`<span class="mark">${LOGO}</span><div class="ai-text"><div class="thinking"><i></i>Nino is thinking…</div></div>`;
-  chat.appendChild(t);scrollEnd();glow.classList.add('busy');
+  chat.appendChild(t);scrollEnd();glow.classList.add('busy');updateSendState();
   try{
     const fd=new FormData();fd.append("name",currentChatId);fd.append("interest",text||"General Study Optimization");fd.append("followup",text);if(file)fd.append("file",file);
     const headers={},uk=localStorage.getItem(USER_KEY_STORAGE);if(uk)headers['X-User-Key']=uk;
-    const res=await fetch("/guide",{method:"POST",body:fd,headers}),data=await res.json();$(tId)?.remove();
+    const res=await fetch("/guide",{method:"POST",body:fd,headers,signal:(AbortSignal.timeout?AbortSignal.timeout(120000):undefined)}),data=await res.json();$(tId)?.remove();
     const trig=data.isTestTrigger||data.IsTestTrigger||data.istesttrigger,qs=data.questions||data.Questions,title=data.testTitle||data.TestTitle||text;
     if(trig&&qs&&qs.length){
       addMessage(data.chatResponse||data.ChatResponse||"I've opened your practice test.","ai",false,null,{title,questions:qs});
       verificationQuestions=qs.map(q=>({...q,selectedAnswer:null,mistakeType:normMistake(q.mistakeType)}));openTestingInterface(title);
     }else addMessage(data.response||data.chatResponse||data.ChatResponse||"Nino couldn't answer that just now. Try sending it again.","ai");
   }catch{$(tId)?.remove();addMessage("### Connection problem\n\nCouldn't reach Nino. Check your internet connection, then send your message again.","ai")}
-  finally{glow.classList.remove('busy')}
+  finally{glow.classList.remove('busy');updateSendState()}
 }
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();send()}});
 input.addEventListener('input',()=>{autoGrow();updateSendState()});
@@ -707,6 +716,7 @@ function refreshIsland(){
   const busy=glow.classList.contains('busy'),timing=examinationActive&&!isReviewMode&&configurator.classList.contains('hidden'),nb=$('navbar');
   nb.classList.toggle('isl',busy||timing);nb.classList.toggle('timing',!busy&&timing);
   $('island-t').textContent=busy?'Nino is thinking':$('countdown').textContent+' left';
+  input.placeholder=busy?'Nino is replying… you can type your next question':PH[phi];
 }
 [[glow,{attributes:true}],[configurator,{attributes:true}],[testSection,{attributes:true}],[$('countdown'),{childList:true,characterData:true,subtree:true}]]
   .forEach(([el,o])=>new MutationObserver(refreshIsland).observe(el,o));
