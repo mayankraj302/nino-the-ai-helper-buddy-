@@ -89,9 +89,11 @@ FORMAT_WEIGHTS = {
 }
 _DEFAULT_FORMATS = {"A": 5, "B": 4}
 
-BATCH_SIZE = 2
-TEST_DEADLINE_S = 35
-_test_pool = ThreadPoolExecutor(max_workers=6)
+# To protect strict 5 RPM limits on Gemini 4 Hydrogen, batch size is set to 3-5 questions
+# so a 5-question test makes 1-2 calls instead of 3-4 simultaneous calls.
+BATCH_SIZE = 5
+TEST_DEADLINE_S = 45
+_test_pool = ThreadPoolExecutor(max_workers=3)
 
 # ═══════════════════════════════════════════════════════════════════════
 # 2. STRUCTURED RESPONSE SCHEMA (Solve-First)
