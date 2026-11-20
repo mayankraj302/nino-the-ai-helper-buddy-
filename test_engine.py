@@ -91,9 +91,9 @@ _DEFAULT_FORMATS = {"A": 5, "B": 4}
 
 # To protect strict 5 RPM limits on Gemini 4 Hydrogen, batch size is set to 3-5 questions
 # so a 5-question test makes 1-2 calls instead of 3-4 simultaneous calls.
-BATCH_SIZE = 5
-TEST_DEADLINE_S = 45
-_test_pool = ThreadPoolExecutor(max_workers=3)
+BATCH_SIZE = 3
+TEST_DEADLINE_S = 35
+_test_pool = ThreadPoolExecutor(max_workers=4)
 
 # ═══════════════════════════════════════════════════════════════════════
 # 2. STRUCTURED RESPONSE SCHEMA (Solve-First)
@@ -366,14 +366,19 @@ def generate_batch(specs, api_key, run_verifier=False):
         q_text = str(q.get("question_latex") or "").strip()
         opts = q.get("options")
         derivation = str(q.get("step_by_step_derivation") or "").strip()
-        correct_idx = q.get("correct_index")
         mt = str(q.get("mistakeType") or "Concept").capitalize()
         if mt not in ("Concept", "Formula", "Silly"):
             mt = "Concept"
 
+        try:
+            correct_idx = int(q.get("correct_index"))
+        except (TypeError, ValueError):
+            continue
+
         if (
             len(q_text) < 25 or len(derivation) < 20 or
             not isinstance(opts, list) or len(opts) != 4 or
+            len({str(o).strip() for o in opts}) != 4 or
             correct_idx not in (0, 1, 2, 3)
         ):
             continue
