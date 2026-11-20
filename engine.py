@@ -1,21 +1,21 @@
 """
-engine.py — High-Speed Multi-Model Engine & Intent Router for Nino v3.
+engine.py — Resilient, Low-Latency Multi-Model Engine & Intent Router for Nino v3.
 
-KEY PERFORMANCE OPTIMIZATIONS (ZERO QUALITY LOSS):
-- Preserves exact model & thinking levels:
-    chat   -> gemini-3.8-flash (thinking=low)
-    solver -> gemini-4-hydrogen (thinking=high, code_exec=True)
-    test   -> gemini-3.8-flash (thinking=high)
-- Removes deprecated gemini-2.5-* fallbacks (retiring Dec 1, 2026); uses 3.6-flash / 3.5-flash-lite.
-- Omits sub-1.0 temperature overrides on Gemini 3/4 thinking models (prevents thinking loops).
-- Safe combined max_output_tokens budgets (thinking + output share the cap on Gemini 3/4).
-- Eliminates 12x silent retry loop on empty responses & uses per-role HTTP timeouts.
-- Fixes detect_task() so conceptual/strategy chat never gets hijacked by heavy solver.
-- Parallelizes test generation to 1 question per concurrent worker (<=5 questions) or 2 per worker (6-10),
-  cutting test generation wall-clock latency by 3x-4x while keeping thinking=high.
+FIXES APPLIED:
+- Per-model circuit breaker: avoids repeating 20s hangs on congested (503/timeout)
+  or entitlement-restricted (403) models while keeping exact quality & thinking levels.
+- True 401/API_KEY_INVALID separation: model-level 403 cascades instead of throwing
+  false "invalid API key in Settings" errors.
+- Fast 9s failover timeout on chat + sub-1s 'quick' path for bare greetings ('hi', 'hello').
+- Preserves exact thinking levels:
+    quick  -> gemini-3.5-flash-lite (minimal)
+    chat   -> gemini-3.8-flash (low) -> gemini-3.6-flash (low) -> gemini-3.5-flash-lite (minimal)
+    solver -> gemini-4-hydrogen (high, code_exec) -> gemini-3.8-flash (high) -> gemini-3.6-flash (high)
+    test   -> gemini-3.8-flash (high) -> gemini-3.6-flash (high) -> gemini-4-hydrogen (high)
 """
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import hashlib
 import json
 import random
 import re
@@ -45,34 +45,44 @@ except ImportError:
 # 1. ROLES, MODELS & CASCADES (Exact Thinking Levels Preserved)
 # ═══════════════════════════════════════════════════════════════════════
 ROLES_CONFIG = {
-    "chat": {
-        "primary": {"model": "gemini-3.8-flash", "thinking": "low", "code_exec": False},
+    "quick": {
+        "primary": {"model": "gemini-3.5-flash-lite", "thinking": "minimal", "code_exec": False, "timeout_ms": 8_000},
         "fallbacks": [
-            {"model": "gemini-3.5-flash-lite", "thinking": "minimal", "code_exec": False},
-            {"model": "gemini-3.6-flash", "thinking": "low", "code_exec": False},
+            {"model": "gemini-3.6-flash", "thinking": "minimal", "code_exec": False, "timeout_ms": 8_000},
+            {"model": "gemini-3.1-flash-lite", "thinking": "minimal", "code_exec": False, "timeout_ms": 8_000},
+            {"model": "gemini-3.8-flash", "thinking": "low", "code_exec": False, "timeout_ms": 10_000},
         ],
-        "default_tokens": 4096,     # Combined thinking + visible output cap
-        "timeout_ms": 22_000,
+        "default_tokens": 1024,
+        "system_prompt": CHAT_PROMPT,
+    },
+    "chat": {
+        "primary": {"model": "gemini-3.8-flash", "thinking": "low", "code_exec": False, "timeout_ms": 9_000},
+        "fallbacks": [
+            {"model": "gemini-3.6-flash", "thinking": "low", "code_exec": False, "timeout_ms": 10_000},
+            {"model": "gemini-3.5-flash-lite", "thinking": "minimal", "code_exec": False, "timeout_ms": 10_000},
+            {"model": "gemini-3.1-flash-lite", "thinking": "minimal", "code_exec": False, "timeout_ms": 10_000},
+        ],
+        "default_tokens": 4096,
         "system_prompt": CHAT_PROMPT,
     },
     "solver": {
-        "primary": {"model": "gemini-4-hydrogen", "thinking": "high", "code_exec": True},
+        "primary": {"model": "gemini-4-hydrogen", "thinking": "high", "code_exec": True, "timeout_ms": 34_000},
         "fallbacks": [
-            {"model": "gemini-3.8-flash", "thinking": "high", "code_exec": True},
-            {"model": "gemini-3.6-flash", "thinking": "high", "code_exec": True},
+            {"model": "gemini-3.8-flash", "thinking": "high", "code_exec": True, "timeout_ms": 28_000},
+            {"model": "gemini-3.6-flash", "thinking": "high", "code_exec": True, "timeout_ms": 24_000},
+            {"model": "gemini-3.5-flash-lite", "thinking": "high", "code_exec": False, "timeout_ms": 20_000},
         ],
-        "default_tokens": 12288,    # Safe headroom for high thinking + full derivation
-        "timeout_ms": 48_000,
+        "default_tokens": 12288,
         "system_prompt": SOLVER_PROMPT,
     },
     "test": {
-        "primary": {"model": "gemini-3.8-flash", "thinking": "high", "code_exec": False},
+        "primary": {"model": "gemini-3.8-flash", "thinking": "high", "code_exec": False, "timeout_ms": 24_000},
         "fallbacks": [
-            {"model": "gemini-4-hydrogen", "thinking": "high", "code_exec": False},
-            {"model": "gemini-3.6-flash", "thinking": "high", "code_exec": False},
+            {"model": "gemini-3.6-flash", "thinking": "high", "code_exec": False, "timeout_ms": 24_000},
+            {"model": "gemini-4-hydrogen", "thinking": "high", "code_exec": False, "timeout_ms": 28_000},
+            {"model": "gemini-3.5-flash-lite", "thinking": "high", "code_exec": False, "timeout_ms": 20_000},
         ],
-        "default_tokens": 8192,     # Safe headroom for high thinking + 1-2 structured MCQs
-        "timeout_ms": 34_000,
+        "default_tokens": 8192,
         "system_prompt": TEST_PROMPT,
     },
 }
@@ -85,22 +95,50 @@ _LEVEL_BUDGETS = {
     "xhigh": 4096,
 }
 
-# Models that support thinking_level="MINIMAL"
 _MINIMAL_SUPPORTED_SUBSTRINGS = ("flash-lite", "3.6-flash", "3-flash-preview")
 
 # ═══════════════════════════════════════════════════════════════════════
-# 2. CLIENT CACHING & CONFIG BUILDERS
+# 2. PER-MODEL CIRCUIT BREAKER & CLIENT CACHE
 # ═══════════════════════════════════════════════════════════════════════
 _clients = {}
 _clients_lock = threading.Lock()
-DEFAULT_TIMEOUT_MS = 35_000
+DEFAULT_TIMEOUT_MS = 20_000
+
+_cooldowns = {}  # {(key_fp, model_id): unblock_timestamp}
+_cooldown_lock = threading.Lock()
+
+def _key_fp(api_key: str) -> str:
+    return hashlib.sha256((api_key or "").encode("utf-8")).hexdigest()[:12]
+
+def _mark_cooldown(api_key: str, model_id: str, seconds: float):
+    with _cooldown_lock:
+        if len(_cooldowns) > 300:
+            now = time.monotonic()
+            for k in [k for k, ts in _cooldowns.items() if ts <= now]:
+                del _cooldowns[k]
+        _cooldowns[(_key_fp(api_key), model_id)] = time.monotonic() + seconds
+
+def _order_by_health(api_key: str, models_cfg: list[dict]) -> list[dict]:
+    """Puts healthy models first; cooled-down models go to the back ordered by earliest expiry."""
+    now = time.monotonic()
+    fp = _key_fp(api_key)
+    healthy, cooled = [], []
+    with _cooldown_lock:
+        for cfg in models_cfg:
+            until = _cooldowns.get((fp, cfg["model"]), 0.0)
+            if until > now:
+                cooled.append((until, cfg))
+            else:
+                healthy.append(cfg)
+    cooled.sort(key=lambda pair: pair[0])
+    return healthy + [cfg for _, cfg in cooled]
 
 def _get_client(api_key: str, timeout_ms: int = DEFAULT_TIMEOUT_MS):
     cache_key = (api_key, timeout_ms)
     with _clients_lock:
         client = _clients.get(cache_key)
         if client is None:
-            if len(_clients) >= 50:
+            if len(_clients) >= 60:
                 _clients.pop(next(iter(_clients)))
             try:
                 client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=timeout_ms))
@@ -110,11 +148,6 @@ def _get_client(api_key: str, timeout_ms: int = DEFAULT_TIMEOUT_MS):
         return client
 
 def _build_thinking_config(level: str | None, model_name: str):
-    """
-    Builds ThinkingConfig safely without invalid API calls.
-    'minimal' is only sent to models that explicitly support it (e.g., flash-lite, 3.6-flash);
-    otherwise mapped to 'low' to prevent 400 validation errors on 3.8-flash / Gemini 4.
-    """
     if not level:
         return None
     model_lower = (model_name or "").lower()
@@ -125,7 +158,6 @@ def _build_thinking_config(level: str | None, model_name: str):
     if clean_level == "minimal" and not any(s in model_lower for s in _MINIMAL_SUPPORTED_SUBSTRINGS):
         clean_level = "low"
 
-    # Gemini 2.5 legacy models only accept thinking_budget
     if "2.5" in model_lower:
         budget = _LEVEL_BUDGETS.get(clean_level, 1024)
         try:
@@ -146,7 +178,6 @@ def _build_thinking_config(level: str | None, model_name: str):
                 return None
 
 def _get_tools(code_exec: bool):
-    """Safely construct code execution tools or return None."""
     if not code_exec:
         return None
     for cls_name in ("ToolCodeExecution", "CodeExecution"):
@@ -159,11 +190,9 @@ def _get_tools(code_exec: bool):
     try:
         return [types.Tool(code_execution={})]
     except Exception:
-        pass
-    return None
+        return None
 
 def _prepare_prefixed_contents(contents, system_instruction: str):
-    """Prepend system prompt into user contents only when developer instruction is rejected."""
     if not system_instruction:
         return contents
     prefix_text = f"[System Instructions: {system_instruction}]\n\n"
@@ -189,11 +218,6 @@ def _prepare_prefixed_contents(contents, system_instruction: str):
 def _build_gen_config(sys_param, thinking_level: str | None, model_id: str,
                       code_exec: bool, max_tokens: int,
                       json_schema=None, json_mode: bool = False):
-    """
-    Constructs GenerateContentConfig.
-    Intentionally omits sub-1.0 temperature on Gemini 3/4 thinking models per Google guidance
-    (low temperature causes reasoning loops & latency spikes on thinking models).
-    """
     kw = {"max_output_tokens": max_tokens}
     if sys_param is not None:
         kw["system_instruction"] = sys_param
@@ -215,7 +239,6 @@ def _build_gen_config(sys_param, thinking_level: str | None, model_id: str,
     return types.GenerateContentConfig(**kw)
 
 def _extract_response_text(resp) -> str | None:
-    """Safely extracts visible non-thought text from a Gemini response."""
     text = getattr(resp, "text", None)
     if text:
         return text
@@ -232,11 +255,23 @@ def _extract_response_text(resp) -> str | None:
         return None
 
 # ═══════════════════════════════════════════════════════════════════════
-# 3. ERROR CLASSIFICATION
+# 3. ERROR CLASSIFICATION (Separates Bad Key vs Model-Level 403 vs 503)
 # ═══════════════════════════════════════════════════════════════════════
-def _is_fatal(err: str) -> bool:
+def _is_key_invalid(err: str) -> bool:
+    """True ONLY when the API key itself is rejected across all models."""
     low = (err or "").lower()
-    return any(t in low for t in ("401", "403", "api_key_invalid", "permission_denied", "unauthenticated", "invalid api key"))
+    return any(t in low for t in (
+        "api_key_invalid", "api key not valid", "invalid api key",
+        "401", "unauthenticated"
+    ))
+
+def _is_permission_denied(err: str) -> bool:
+    """Model-level or project-level 403 — should cascade to fallback models first."""
+    low = (err or "").lower()
+    return any(t in low for t in (
+        "403", "permission_denied", "denied access",
+        "free tier is not available", "terms of use"
+    ))
 
 def _is_rate_limit(err: str) -> bool:
     low = (err or "").lower()
@@ -246,38 +281,37 @@ def _is_cascade_needed(err: str) -> bool:
     low = (err or "").lower()
     return any(t in low for t in (
         "503", "unavailable", "high demand", "overloaded",
-        "504", "timeout", "deadline_exceeded", "timed out",
-        "404", "not_found", "not found", "500", "internal"
+        "504", "timeout", "deadline_exceeded", "timed out", "readtimeout",
+        "404", "not_found", "not found", "500", "internal", "empty_response"
     ))
 
-def friendly_error(err: str) -> str:
-    """Returns a user-friendly error string for common API failure modes."""
+def friendly_error(err: str, is_owner_key: bool = True) -> str:
+    """Returns accurate, non-misleading error text for shared-key vs BYOK users."""
     if not err:
         return "An unknown error occurred. Please try sending your message again."
     err_str = str(err)
     if err_str == "no_key":
         return "Nino isn't configured yet. Please add a Gemini key in Settings or try later."
-    if _is_fatal(err_str):
-        return "That Gemini API key looks invalid or lacks permission. Please check it in Settings."
+    if _is_key_invalid(err_str):
+        if not is_owner_key:
+            return "Your personal Gemini API key in Settings looks invalid. Clear it or paste a valid key from Google AI Studio."
+        return "Nino's shared AI service key needs a quick refresh on the server. You can add your own free Gemini key in Settings to continue right away."
+    if _is_permission_denied(err_str):
+        if not is_owner_key:
+            return "Your Gemini API key doesn't have Free Tier access enabled for these models in Google AI Studio. Check your AI Studio project or clear the key in Settings."
+        return "Nino's shared Gemini project is temporarily restricted by Google. Add your own free Gemini key in Settings to keep going."
     if _is_rate_limit(err_str):
-        return "Nino is receiving heavy traffic (daily AI quota reached). Please wait a moment or add your own key in Settings."
+        return "Nino is receiving heavy traffic (AI quota limit reached). Wait a few seconds or add your own Gemini key in Settings."
     if _is_cascade_needed(err_str):
-        return "Google's model is currently busy. Nino is rerouting your request — please tap send again!"
-    return f"Nino encountered an error: {err_str[:80]}. Please try sending your message again."
+        return "Google's AI servers are temporarily overloaded right now. Please tap send again in a moment."
+    return f"Nino hit a temporary error ({err_str[:70]}). Please try sending your message again."
 
 # ═══════════════════════════════════════════════════════════════════════
-# 4. FAST SINGLE-MODEL INVOCATION (NO SILENT 12x RETRY TRAP)
+# 4. SINGLE MODEL ATTEMPT
 # ═══════════════════════════════════════════════════════════════════════
 def _invoke_model_attempt(client, model_id: str, contents, system_inst: str,
                           thinking_level: str | None, code_exec: bool,
                           max_tokens: int, json_schema=None, json_mode: bool = False):
-    """
-    Executes a single model call with targeted auto-healing ONLY on specific API errors:
-      - 'developer instruction' rejected -> retry with prefixed system prompt
-      - 'tool' / 'code_execution' rejected -> retry without tool
-      - 'thinking' rejected -> retry without thinking config
-    Immediately exits on valid empty response instead of looping 12 times.
-    """
     sys_modes = [("string", system_inst), ("prefixed", None)] if system_inst else [("none", None)]
     eff_thinking = thinking_level
     eff_code_exec = code_exec
@@ -285,7 +319,7 @@ def _invoke_model_attempt(client, model_id: str, contents, system_inst: str,
     for mode, sys_param in sys_modes:
         eff_contents = _prepare_prefixed_contents(contents, system_inst) if mode == "prefixed" else contents
 
-        for _ in range(3):  # At most 2 targeted parameter heals
+        for _ in range(3):
             try:
                 config = _build_gen_config(
                     sys_param=sys_param,
@@ -304,18 +338,22 @@ def _invoke_model_attempt(client, model_id: str, contents, system_inst: str,
                 text = _extract_response_text(resp)
                 if text:
                     return text, None
-                # Valid HTTP 200 but empty text -> don't hammer same model; let caller cascade
                 return None, "empty_response"
 
             except Exception as e:
                 err_str = str(e)
                 err_low = err_str.lower()
 
-                if _is_fatal(err_str) or _is_cascade_needed(err_str) or _is_rate_limit(err_str):
+                if (
+                    _is_key_invalid(err_str)
+                    or _is_permission_denied(err_str)
+                    or _is_cascade_needed(err_str)
+                    or _is_rate_limit(err_str)
+                ):
                     return None, err_str
 
                 if "developer instruction" in err_low or "developer_instruction" in err_low:
-                    break  # Move to next sys_mode ("prefixed")
+                    break
 
                 if eff_code_exec and ("tool" in err_low or "code_execution" in err_low):
                     eff_code_exec = False
@@ -330,83 +368,84 @@ def _invoke_model_attempt(client, model_id: str, contents, system_inst: str,
     return None, "empty_response"
 
 # ═══════════════════════════════════════════════════════════════════════
-# 5. PUBLIC CALL_GEMINI & STREAM_GEMINI WITH FAST FALLBACK
+# 5. PUBLIC CALL_GEMINI & STREAM_GEMINI WITH CIRCUIT BREAKER
 # ═══════════════════════════════════════════════════════════════════════
 def call_gemini(role: str, contents, api_key: str, json_schema=None, json_mode: bool = False,
                 system_instruction: str = None) -> tuple[str | None, str | None]:
-    """
-    Fast, resilient Gemini API caller:
-    - Uses per-role timeout so stalled sockets fail over quickly.
-    - On 429: one brief jittered retry, then immediately cascades to fallback model.
-    - On 503/504/404/timeout: immediately cascades to fallback model.
-    """
     if not api_key:
         return None, "no_key"
 
     role_key = (role or "chat").lower()
     config = ROLES_CONFIG.get(role_key, ROLES_CONFIG["chat"])
-    models_to_try = [config["primary"]] + config["fallbacks"]
+    ordered_models = _order_by_health(api_key, [config["primary"]] + config["fallbacks"])
     effective_system = system_instruction if system_instruction is not None else config.get("system_prompt", "")
-    timeout_ms = config.get("timeout_ms", DEFAULT_TIMEOUT_MS)
     max_tokens = config.get("default_tokens", 4096)
 
-    try:
-        client = _get_client(api_key, timeout_ms=timeout_ms)
-    except Exception as exc:
-        return None, f"client_init: {exc}"
-
     last_error = None
-    for model_cfg in models_to_try:
+    for model_cfg in ordered_models:
         model_id = model_cfg["model"]
         thinking = model_cfg.get("thinking")
         code_exec = model_cfg.get("code_exec", False)
+        timeout_ms = model_cfg.get("timeout_ms", DEFAULT_TIMEOUT_MS)
 
-        for attempt in range(2):  # 1 retry max on 429 before fast cascade
-            text, err = _invoke_model_attempt(
-                client=client,
-                model_id=model_id,
-                contents=contents,
-                system_inst=effective_system,
-                thinking_level=thinking,
-                code_exec=code_exec,
-                max_tokens=max_tokens,
-                json_schema=json_schema,
-                json_mode=json_mode,
-            )
-            if text:
-                return text, None
+        try:
+            client = _get_client(api_key, timeout_ms=timeout_ms)
+        except Exception as exc:
+            return None, f"client_init: {exc}"
 
-            last_error = err
-            if _is_fatal(err):
-                return None, err
+        t_start = time.perf_counter()
+        text, err = _invoke_model_attempt(
+            client=client,
+            model_id=model_id,
+            contents=contents,
+            system_inst=effective_system,
+            thinking_level=thinking,
+            code_exec=code_exec,
+            max_tokens=max_tokens,
+            json_schema=json_schema,
+            json_mode=json_mode,
+        )
+        elapsed = time.perf_counter() - t_start
 
-            if _is_rate_limit(err) and attempt == 0:
-                time.sleep(0.8 + random.uniform(0.1, 0.4))
-                continue
+        if text:
+            print(f"[nino-engine] role={role_key} model={model_id} ok in {elapsed:.2f}s")
+            return text, None
 
-            break  # Cascade immediately on 503/504/404/timeout/empty
+        last_error = err
+        print(f"[nino-engine] role={role_key} model={model_id} FAIL ({elapsed:.2f}s): {str(err)[:160]}")
+
+        if _is_key_invalid(err):
+            return None, err
+
+        if _is_permission_denied(err):
+            _mark_cooldown(api_key, model_id, 300.0)  # Skip restricted model for 5 min
+            continue
+
+        if _is_rate_limit(err):
+            _mark_cooldown(api_key, model_id, 45.0)
+            continue
+
+        if _is_cascade_needed(err):
+            _mark_cooldown(api_key, model_id, 60.0)   # Skip congested 503/timeout model for 60s
+            continue
 
     return None, last_error
 
 def stream_gemini(role: str, contents, api_key: str, system_instruction: str = None):
-    """
-    Generator yielding visible text chunks in real time for SSE streaming (/guide/stream).
-    Automatically falls back across models if the primary fails before emitting tokens.
-    """
     if not api_key:
         raise RuntimeError("no_key")
 
     role_key = (role or "chat").lower()
     config = ROLES_CONFIG.get(role_key, ROLES_CONFIG["chat"])
-    models_to_try = [config["primary"]] + config["fallbacks"]
+    ordered_models = _order_by_health(api_key, [config["primary"]] + config["fallbacks"])
     effective_system = system_instruction if system_instruction is not None else config.get("system_prompt", "")
-    timeout_ms = config.get("timeout_ms", DEFAULT_TIMEOUT_MS)
     max_tokens = config.get("default_tokens", 4096)
-    client = _get_client(api_key, timeout_ms=timeout_ms)
 
     last_err = None
-    for model_cfg in models_to_try:
+    for model_cfg in ordered_models:
         model_id = model_cfg["model"]
+        timeout_ms = model_cfg.get("timeout_ms", DEFAULT_TIMEOUT_MS)
+        client = _get_client(api_key, timeout_ms=timeout_ms)
         emitted = False
         try:
             gen_cfg = _build_gen_config(
@@ -430,15 +469,25 @@ def stream_gemini(role: str, contents, api_key: str, system_instruction: str = N
                 return
         except Exception as exc:
             last_err = str(exc)
-            if emitted or _is_fatal(last_err):
+            if emitted or _is_key_invalid(last_err):
                 raise
+            if _is_permission_denied(last_err):
+                _mark_cooldown(api_key, model_id, 300.0)
+            else:
+                _mark_cooldown(api_key, model_id, 60.0)
             continue
 
     raise RuntimeError(last_err or "empty_response")
 
 # ═══════════════════════════════════════════════════════════════════════
-# 6. PRECISION INTENT ROUTER (Stops Conceptual Chat From Hitting Solver)
+# 6. PRECISION INTENT ROUTER
 # ═══════════════════════════════════════════════════════════════════════
+_QUICK_GREETING_RE = re.compile(
+    r'^(?:hi+|hey+|hello+|hlo|yo+|sup|namaste|gm|gn|good\s+(?:morning|afternoon|evening|night)|'
+    r'thanks?|thank\s+you|thx|ok(?:ay)?|k|cool|nice|got\s+it|bye|bhai|bro|nino|hi\s+nino|hey\s+nino|hello\s+nino)[!.?,\s]*$',
+    re.IGNORECASE,
+)
+
 _TEST_ACTIONS = {
     'generate', 'give', 'make', 'create', 'set', 'curate', 'prepare',
     'test', 'quiz', 'drill', 'practice', 'draft', 'build', 'conduct',
@@ -459,7 +508,6 @@ _TEST_NEGATIVE_GUARDS = [
     r'\bwhere\s+am\s+i\s+wrong\b', r'\bhelp\s+me\s+solve\b'
 ]
 
-# Phrases that clearly mean conceptual chat, mentorship, or study strategy (NOT numerical solving)
 _CHAT_CONCEPT_GUARDS = [
     r'\bhow\s+(?:should\s+i|to)\s+(?:study|revise|prepare|approach|master|remember|memorize|start)\b',
     r'\b(?:study\s+plan|timetable|schedule|roadmap|strategy|weightage|important\s+(?:chapters|topics))\b',
@@ -468,7 +516,6 @@ _CHAT_CONCEPT_GUARDS = [
     r'\b(?:tips?\s+(?:for|on)|tricks?\s+for|best\s+books?|resources?\s+for)\b',
 ]
 
-# Explicit problem-solving action verbs (NOT bare chapter nouns!)
 _SOLVER_ACTION_PATTERNS = [
     r'\bsolve\b', r'\bevaluate\b', r'\bcalculate\b', r'\bcompute\b',
     r'\bprove\s+that\b', r'\bshow\s+that\b', r'\bderive\b',
@@ -486,38 +533,30 @@ _MATH_SYMBOLS = (
 )
 
 def detect_task(text: str, has_photo: bool = False, deep_solve: bool = False) -> str:
-    """
-    Precision intent router:
-      a. Photo attached OR deep_solve toggle active -> 'solver'
-      b. Test generation request (with negative guards) -> 'test'
-      c. Explicit equations/math symbols OR concrete problem-solving prompt -> 'solver'
-      d. Conceptual theory, strategy, burnout, or general chat -> 'chat'
-    """
     if has_photo or deep_solve:
         return 'solver'
 
     clean_text = (text or "").strip()
     if not clean_text:
-        return 'chat'
+        return 'quick'
+
+    if _QUICK_GREETING_RE.match(clean_text):
+        return 'quick'
 
     low = clean_text.lower()
     tokens = set(re.findall(r'[a-z]+', low))
 
-    # b. Test detection (catches direct requests upfront so chat doesn't waste a turn)
     has_neg_guard = any(re.search(pat, low) for pat in _TEST_NEGATIVE_GUARDS)
     if not has_neg_guard:
         has_action = bool(tokens & _TEST_ACTIONS)
         has_target = bool(tokens & _TEST_TARGETS)
-
         standalone = bool(
             re.search(r'\b(mock\s+tests?|practice\s+tests?|jee\s+mock|take\s+(?:a\s+)?test|quiz\s+me|test\s+my\s+(?:concepts?|knowledge)|check\s+if\s+i\s+know|dpp\s+(?:on|for))\b', low) or
             re.search(r'\b\d+\s*(?:mcqs?|questions?|problems?|ques)\b', low)
         )
-
         if (has_action and has_target) or standalone:
             return 'test'
 
-    # c. Hard math signals -> always solver
     if any(sym in clean_text for sym in _MATH_SYMBOLS):
         return 'solver'
 
@@ -529,16 +568,12 @@ def detect_task(text: str, has_photo: bool = False, deep_solve: bool = False) ->
     if has_equation:
         return 'solver'
 
-    # Explicit problem-solving phrasing -> solver (even if mixed with 'explain')
     if any(re.search(pat, low) for pat in _SOLVER_ACTION_PATTERNS):
-        # Don't send "explain how to study..." or "explain what is torque" to solver
         if not any(re.search(pat, low) for pat in _CHAT_CONCEPT_GUARDS):
             return 'solver'
-        # Still route to solver if they explicitly asked to solve/calculate/derive/draw
         if re.search(r'\b(solve|calculate|compute|evaluate|derive|prove|step\s+by\s+step|draw\s+a\s+diagram|explain\s+visually)\b', low):
             return 'solver'
 
-    # d. Fast conversational mentor/theory/strategy -> 'chat'
     return 'chat'
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -613,13 +648,8 @@ MAX_PARALLEL_WORKERS = 5
 QUESTION_ITEM_SCHEMA = {
     "type": "OBJECT",
     "properties": {
-        "subject": {
-            "type": "STRING",
-            "enum": ["Physics", "Chemistry", "Maths"]
-        },
-        "chapter": {
-            "type": "STRING"
-        },
+        "subject": {"type": "STRING", "enum": ["Physics", "Chemistry", "Maths"]},
+        "chapter": {"type": "STRING"},
         "question_latex": {
             "type": "STRING",
             "description": "Self-contained JEE problem statement in LaTeX ($...$). Never mention figures, diagrams, or images."
@@ -641,30 +671,18 @@ QUESTION_ITEM_SCHEMA = {
             "type": "INTEGER",
             "description": "0-based index (0, 1, 2, or 3) of the correct option."
         },
-        "mistakeType": {
-            "type": "STRING",
-            "enum": ["Concept", "Formula", "Silly"]
-        }
+        "mistakeType": {"type": "STRING", "enum": ["Concept", "Formula", "Silly"]}
     },
     "required": [
-        "subject",
-        "chapter",
-        "question_latex",
-        "step_by_step_derivation",
-        "final_verified_answer",
-        "options",
-        "correct_index",
-        "mistakeType"
+        "subject", "chapter", "question_latex", "step_by_step_derivation",
+        "final_verified_answer", "options", "correct_index", "mistakeType"
     ]
 }
 
 TEST_BATCH_RESPONSE_SCHEMA = {
     "type": "OBJECT",
     "properties": {
-        "questions": {
-            "type": "ARRAY",
-            "items": QUESTION_ITEM_SCHEMA
-        }
+        "questions": {"type": "ARRAY", "items": QUESTION_ITEM_SCHEMA}
     },
     "required": ["questions"]
 }
@@ -686,7 +704,6 @@ _PHANTOM_DIAGRAM_PATTERNS = [
 ]
 
 def clean_question(text: str) -> str | None:
-    """Validates question text, rejecting phantom diagrams and unworkably short stems."""
     if not text:
         return None
     cleaned = text.strip()
@@ -706,7 +723,6 @@ def _num_value(o):
     return float(s.strip('$ ')) if _PLAIN_NUM.match(s) else None
 
 def _realign_options(options, correct_idx):
-    """Normalize options array, shuffle safely, and return (shuffled_opts, new_correct_idx)."""
     clean_opts = [str(x).strip() for x in options]
     vals = [_num_value(o) for o in clean_opts]
 
@@ -725,16 +741,13 @@ def _realign_options(options, correct_idx):
 def _scoped_focus_block(specs) -> str:
     if not CHAPTER_FOCUS:
         return ""
-    needed = []
-    seen = set()
+    needed, seen = [], set()
     for sp in specs:
         t = sp.get("topic", "")
         if t in CHAPTER_FOCUS and t not in seen:
             seen.add(t)
             needed.append(f"- {t}: {CHAPTER_FOCUS[t]}")
-    if not needed:
-        return ""
-    return "\n\nFOCUS SUB-TOPICS:\n" + "\n".join(needed)
+    return ("\n\nFOCUS SUB-TOPICS:\n" + "\n".join(needed)) if needed else ""
 
 # ═══════════════════════════════════════════════════════════════════════
 # 10. TEST PARSER & HIGH-PARALLELISM BUILDER
@@ -754,10 +767,6 @@ please pls paper and class level today tomorrow now quick short full another new
 _NOT_A_COUNT = {"class", "grade", "std", "chapter", "ch", "unit", "paper", "set", "shift", "day", "year", "jee", "session"}
 
 def parse_test_request(text: str) -> tuple[int, str | None, str]:
-    """
-    Extracts (count, subject, hint) from natural language prompt.
-    Defaults to 5 questions if unspecified. Clamped between 2 and 10.
-    """
     low = (text or "").lower()
     count = None
     for m in re.finditer(r'\b(\d{1,2})\b', low):
@@ -778,7 +787,6 @@ def parse_test_request(text: str) -> tuple[int, str | None, str]:
     return count, subject, " ".join(hint)[:60]
 
 def build_specs(count: int, subject: str | None, hint: str | None):
-    """Constructs question blueprints across syllabus tiers, twists, and formats."""
     twists = [TWISTS[i % len(TWISTS)] for i in range(count)]
     random.shuffle(twists)
     levels = (["Medium+", "Hard", "Medium+"] * count)[:count]
@@ -819,11 +827,6 @@ def build_specs(count: int, subject: str | None, hint: str | None):
     return specs
 
 def chunk_specs(specs, max_workers: int = MAX_PARALLEL_WORKERS):
-    """
-    Adaptive parallel chunking:
-    - <=5 questions -> 1 question per concurrent worker (fastest wall-clock time!)
-    - 6-10 questions -> balanced batches of 2 across <=5 concurrent workers (avoids RPM 429s)
-    """
     total = len(specs)
     if total == 0:
         return []
@@ -870,25 +873,18 @@ def _generate_batch(specs, api_key: str):
         else:
             return [], "no_valid_json"
 
-    raw_qs = data.get("questions", [])
     valid_qs = []
-    for q in raw_qs:
+    for q in data.get("questions", []):
         clean_text = clean_question(q.get("question_latex"))
         if not clean_text:
             continue
-
         opts = q.get("options")
         derivation = str(q.get("step_by_step_derivation") or "").strip()
         correct_idx = q.get("correct_index")
         mt = str(q.get("mistakeType") or "Concept").capitalize()
         if mt not in ("Concept", "Formula", "Silly"):
             mt = "Concept"
-
-        if (
-            len(derivation) < 20 or
-            not isinstance(opts, list) or len(opts) != 4 or
-            correct_idx not in (0, 1, 2, 3)
-        ):
+        if len(derivation) < 20 or not isinstance(opts, list) or len(opts) != 4 or correct_idx not in (0, 1, 2, 3):
             continue
 
         shuffled_opts, new_correct = _realign_options(opts, correct_idx)
@@ -905,11 +901,6 @@ def _generate_batch(specs, api_key: str):
     return valid_qs, None
 
 def build_test(count: int, subject: str | None, hint: str | None, api_key: str) -> tuple[str, list[dict], str | None]:
-    """
-    Generates a full practice test concurrently (1 question/worker for <=5 Qs, 2 Qs/worker for 6-10 Qs)
-    preserving thinking='high' on gemini-3.8-flash while cutting wall-clock wait by 3x-4x.
-    Returns: (title, questions_list, err)
-    """
     count = max(2, min(int(count or 5), 10))
     specs = build_specs(count, subject, hint)
     batches = chunk_specs(specs, max_workers=MAX_PARALLEL_WORKERS)
@@ -937,21 +928,12 @@ def build_test(count: int, subject: str | None, hint: str | None, api_key: str) 
             if not err:
                 err = "batch_timeout"
 
-    all_questions = [q for bucket in ordered_results for q in bucket]
-
-    # Deduplicate while preserving batch order
-    seen = set()
-    unique = []
-    for q in all_questions:
-        key = re.sub(r'\W+', '', q["question"].lower())[:60]
-        if key not in seen:
-            seen.add(key)
-            unique.append(q)
+    seen, unique = set(), []
+    for bucket in ordered_results:
+        for q in bucket:
+            key = re.sub(r'\W+', '', q["question"].lower())[:60]
+            if key not in seen:
+                seen.add(key)
+                unique.append(q)
 
     for idx, q in enumerate(unique, 1):
-        q["id"] = idx
-
-    title = f"{subject + ': ' if subject else ''}{hint.title()}" if hint else (
-        f"{subject}: Mixed Chapters" if subject else "Mixed PCM Challenge"
-    )
-    return title, unique, err
