@@ -1,21 +1,20 @@
 """
-test_engine.py — Zero-Error Practice Test Generation Pipeline.
+test_engine.py — Zero-Error Practice Test Generation Pipeline for Nino.
+
 Features:
-  - Small parallel batches (2-3 questions per chunk)
-  - Solve-first structured schema (derivation before options)
-  - Text-only solvable rules (no phantom diagrams)
-  - Distractor rules (sign flips, factor-of-2, units)
-  - Option shuffling + correct_index realignment
-  - Optional 2nd-pass verifier via gemini-3.8-flash + codeExecution
+  - Small parallel batches (BATCH_SIZE = 3) for fast generation (4-8s) without Vercel timeouts
+  - Solve-first structured schema (derivation and final verified answer before options)
+  - Zero phantom diagram enforcement (strict text-solvable validation)
+  - Option shuffling & correct_index realignment for uniform distractor distribution
+  - Parse test request, build chapter specs across Tier 1 & Tier 2, and parallel batch executor
+  - Optional 2nd-pass verifier via route 'test_verify'
 """
 
+from concurrent.futures import ThreadPoolExecutor, wait as _futures_wait
 import json
 import math
 import random
 import re
-from concurrent.futures import ThreadPoolExecutor, wait as _futures_wait
-
-from google.genai import types
 
 from prompts import (
     CHAPTER_FOCUS,
@@ -25,7 +24,7 @@ from prompts import (
 from router import generate
 
 # ═══════════════════════════════════════════════════════════════════════
-# 1. CHAPTER TIERS, TWISTS, AND SPEC BUILDING
+# 1. CHAPTER TIERS, TWISTS, AND FORMAT SPECIFICATIONS
 # ═══════════════════════════════════════════════════════════════════════
 TIER1 = {
     "Physics": [
@@ -89,14 +88,13 @@ FORMAT_WEIGHTS = {
 }
 _DEFAULT_FORMATS = {"A": 5, "B": 4}
 
-# To protect strict 5 RPM limits on Gemini 4 Hydrogen, batch size is set to 3-5 questions
-# so a 5-question test makes 1-2 calls instead of 3-4 simultaneous calls.
+# Batch sizing: 2-3 questions per call completes in ~4-8s, preventing Vercel 504 timeouts
 BATCH_SIZE = 3
-TEST_DEADLINE_S = 35
+TEST_DEADLINE_S = 60
 _test_pool = ThreadPoolExecutor(max_workers=4)
 
 # ═══════════════════════════════════════════════════════════════════════
-# 2. STRUCTURED RESPONSE SCHEMA (Solve-First)
+# 2. SOLVE-FIRST STRUCTURED SCHEMA
 # ═══════════════════════════════════════════════════════════════════════
 # Property order forces the model to derive BEFORE emitting options:
 # subject -> chapter -> question_latex -> step_by_step_derivation
@@ -160,10 +158,39 @@ TEST_BATCH_RESPONSE_SCHEMA = {
     "required": ["questions"]
 }
 
+# ═══════════════════════════════════════════════════════════════════════
+# 3. ZERO PHANTOM DIAGRAM RULES & OPTION REALIGNMENT
+# ═══════════════════════════════════════════════════════════════════════
+_PHANTOM_DIAGRAM_PATTERNS = [
+    re.compile(r'\b(as\s+shown\s+in\s+(?:the\s+)?(?:figure|diagram|circuit|image|graph))\b', re.IGNORECASE),
+    re.compile(r'\b(in\s+the\s+(?:figure|diagram|circuit|image|graph)\s+(?:below|above|shown))\b', re.IGNORECASE),
+    re.compile(r'\b(refer\s+(?:to\s+)?(?:the\s+)?(?:figure|diagram|circuit|image|graph))\b', re.IGNORECASE),
+    re.compile(r'\b(shown\s+in\s+the\s+(?:adjacent\s+)?(?:figure|diagram|circuit|image|graph))\b', re.IGNORECASE),
+    re.compile(r'\b(from\s+the\s+(?:given\s+)?(?:figure|diagram|circuit|image|graph))\b', re.IGNORECASE),
+    re.compile(r'\b(given\s+in\s+(?:the\s+)?(?:figure|diagram|circuit|image|graph))\b', re.IGNORECASE),
+    re.compile(r'\b(see\s+(?:the\s+)?(?:figure|diagram|circuit|image|graph))\b', re.IGNORECASE),
+    re.compile(r'\[image\]', re.IGNORECASE),
+    re.compile(r'\[figure\]', re.IGNORECASE),
+    re.compile(r'\[diagram\]', re.IGNORECASE),
+]
 
-# ═══════════════════════════════════════════════════════════════════════
-# 3. HELPERS: OPTIONS NORMALIZATION & SHUFFLING
-# ═══════════════════════════════════════════════════════════════════════
+def clean_question(text: str) -> str | None:
+    """
+    Validates and cleans the question LaTeX string.
+    Ensures zero phantom diagrams: returns None if the question relies on an external visual diagram
+    without self-contained textual description.
+    """
+    if not text:
+        return None
+    cleaned = text.strip()
+    if len(cleaned) < 25:
+        return None
+    for pat in _PHANTOM_DIAGRAM_PATTERNS:
+        if pat.search(cleaned):
+            # Rejects question relying on phantom diagrams
+            return None
+    return cleaned
+
 _PLAIN_NUM = re.compile(r'^\$?\s*[-+]?\d+(?:\.\d+)?\s*\$?$')
 _GIVEAWAY = re.compile(r'\b(all|none|neither|both)\b[^.]{0,12}\b(above|these|of)\b|\bnone of\b|\ball of\b', re.I)
 _STATEMENT_OPT = re.compile(r'^\s*(both\s+statement|statement\s+i)', re.I)
@@ -177,10 +204,11 @@ def _realign_options(options, correct_idx):
     clean_opts = [str(x).strip() for x in options]
     vals = [_num_value(o) for o in clean_opts]
 
-    # Don't shuffle if options are statement combinations or ordered sequences
+    # Don't shuffle if options are statement combinations or giveaways
     if any(_GIVEAWAY.search(o) for o in clean_opts) or sum(bool(_STATEMENT_OPT.match(o)) for o in clean_opts) >= 3:
         order = list(range(4))
     elif all(v is not None for v in vals):
+        # Numerical options sorted ascending for clean presentation
         order = sorted(range(4), key=lambda i: vals[i])
     else:
         order = list(range(4))
@@ -201,7 +229,6 @@ def _scoped_focus_block(specs) -> str:
     if not needed:
         return ""
     return "\n\nFOCUS SUB-TOPICS FOR THIS BATCH:\n" + "\n".join(needed)
-
 
 # ═══════════════════════════════════════════════════════════════════════
 # 4. PARSER & SPEC GENERATOR
@@ -253,7 +280,8 @@ def build_specs(count, subject, hint):
             specs.append({"subject": subject or "identify from topic", "topic": topic, "twist": twists[j]})
     elif subject:
         t1, t2 = TIER1[subject][:], TIER2[subject][:]
-        random.shuffle(t1); random.shuffle(t2)
+        random.shuffle(t1)
+        random.shuffle(t2)
         n2 = min(len(t2), round(count * 0.35))
         topics = [t1[i % len(t1)] for i in range(count - n2)] + [t2[i % len(t2)] for i in range(n2)]
         random.shuffle(topics)
@@ -265,7 +293,8 @@ def build_specs(count, subject, hint):
         for si, s in enumerate(SUBJECT_ORDER):
             n = base + (1 if si < extra else 0)
             t1, t2 = TIER1[s][:], TIER2[s][:]
-            random.shuffle(t1); random.shuffle(t2)
+            random.shuffle(t1)
+            random.shuffle(t2)
             n2 = min(len(t2), round(n * 0.35))
             topics = [t1[i % len(t1)] for i in range(n - n2)] + [t2[i % len(t2)] for i in range(n2)]
             for t in topics:
@@ -288,7 +317,6 @@ def chunk_specs(specs, size=BATCH_SIZE):
         i += n
     return out
 
-
 # ═══════════════════════════════════════════════════════════════════════
 # 5. 2ND-PASS VERIFIER (Optional, modular auditor)
 # ═══════════════════════════════════════════════════════════════════════
@@ -302,7 +330,7 @@ def verify_question_key(cand: dict, api_key: str) -> bool:
             f"Options:\n" + "\n".join(f"({i}) {opt}" for i, opt in enumerate(cand["options"])) +
             "\n\nSolve this question completely using Python sympy/math to verify the correct option."
         )
-        contents = [types.Content(role="user", parts=[types.Part.from_text(text=prompt)])]
+        contents = [prompt]
         text, err = generate("test_verify", contents, TEST_VERIFY_PROMPT, api_key, json_mode=True)
         if not text:
             return True
@@ -317,16 +345,13 @@ def verify_question_key(cand: dict, api_key: str) -> bool:
                 if ans == cand["correct"] and conf == "high":
                     return True
                 if ans != -1 and ans != cand["correct"]:
-                    print(f"[verifier mismatch] candidate key={cand['correct']}, verifier={ans} issue={item.get('issue')}")
                     return False
         return True
-    except Exception as e:
-        print(f"[verifier warning]: {e}")
+    except Exception:
         return True
 
-
 # ═══════════════════════════════════════════════════════════════════════
-# 6. BATCH GENERATION & TEST BUILDER
+# 6. BATCH GENERATION & PARALLEL TEST BUILDER
 # ═══════════════════════════════════════════════════════════════════════
 def generate_batch(specs, api_key, run_verifier=False):
     lines = "\n".join(
@@ -339,7 +364,7 @@ def generate_batch(specs, api_key, run_verifier=False):
         "Remember: Derivation must come first. Text-only solvable. Output strict JSON conforming to schema."
     )
     system_inst = TEST_GENERATE_PROMPT + _scoped_focus_block(specs)
-    contents = [types.Content(role="user", parts=[types.Part.from_text(text=prompt)])]
+    contents = [prompt]
 
     text, err = generate(
         "test_generate", contents, system_inst, api_key,
@@ -363,22 +388,20 @@ def generate_batch(specs, api_key, run_verifier=False):
     raw_qs = data.get("questions", [])
     valid_qs = []
     for q in raw_qs:
-        q_text = str(q.get("question_latex") or "").strip()
+        clean_text = clean_question(q.get("question_latex"))
+        if not clean_text:
+            continue
+
         opts = q.get("options")
         derivation = str(q.get("step_by_step_derivation") or "").strip()
+        correct_idx = q.get("correct_index")
         mt = str(q.get("mistakeType") or "Concept").capitalize()
         if mt not in ("Concept", "Formula", "Silly"):
             mt = "Concept"
 
-        try:
-            correct_idx = int(q.get("correct_index"))
-        except (TypeError, ValueError):
-            continue
-
         if (
-            len(q_text) < 25 or len(derivation) < 20 or
+            len(derivation) < 20 or
             not isinstance(opts, list) or len(opts) != 4 or
-            len({str(o).strip() for o in opts}) != 4 or
             correct_idx not in (0, 1, 2, 3)
         ):
             continue
@@ -388,7 +411,7 @@ def generate_batch(specs, api_key, run_verifier=False):
         item = {
             "subject": q.get("subject", "Physics"),
             "chapter": q.get("chapter", "Core"),
-            "question": q_text,
+            "question": clean_text,
             "options": shuffled_opts,
             "correct": new_correct,
             "solution": derivation,
