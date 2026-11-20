@@ -40,6 +40,7 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
 #amb i:nth-child(3){width:34vmax;height:34vmax;background:var(--b3);top:35%;left:50%;animation:d3 40s ease-in-out infinite alternate;opacity:calc(var(--bo)*.55)}
 #amb i:nth-child(4){width:26vmax;height:26vmax;background:var(--b4);top:60%;left:-8vmax;animation:d2 30s ease-in-out infinite alternate-reverse;opacity:calc(var(--bo)*.5)}
 @keyframes d1{to{transform:translate(8vmax,6vmax) scale(1.08)}}@keyframes d2{to{transform:translate(-7vmax,-5vmax) scale(.95)}}@keyframes d3{to{transform:translate(-9vmax,4vmax) scale(1.08)}}
+@keyframes rise{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
 #app{position:relative;z-index:1;display:flex;height:100dvh;padding:calc(10px + var(--st)) 10px calc(10px + var(--sb));gap:10px}
 .glass,.btn,.card{background:var(--gl);border:1px solid var(--gb);box-shadow:var(--sh),inset 0 1px 0 var(--hi);-webkit-backdrop-filter:blur(30px) saturate(190%);backdrop-filter:blur(30px) saturate(190%)}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 20px;border-radius:999px;font-weight:600;font-size:15px;box-shadow:inset 0 1px 0 var(--hi),0 2px 10px rgba(0,0,0,.14);transition:transform .35s var(--ease),background .2s}
@@ -221,6 +222,9 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
 .progress{height:9px;border-radius:5px;background:rgba(0,0,0,.25);overflow:hidden;margin-top:10px}
 .progress>div{height:100%;width:0;border-radius:5px;background:linear-gradient(90deg,#30d158,#64d2ff);transition:width 1.2s var(--ease)}
 .note{font-size:13px;color:var(--mu);padding:6px 6px 0}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:18px;background:var(--gl);border:1px solid var(--gb)}
+.seg button{min-height:40px;border-radius:14px;font-size:14px;font-weight:600;color:var(--mu);transition:background .25s,color .25s}
+.seg button.on{background:var(--user);color:#fff;box-shadow:0 4px 12px rgba(10,132,255,.35)}
 .key-input{width:100%;min-height:48px;padding:0 16px;border-radius:18px;border:1px solid var(--gb);background:var(--gl);color:var(--tx);font:inherit;outline:0}
 .btn-save{margin-top:18px;width:100%;min-height:52px;font-size:16px}
 #return-btn{position:fixed;top:calc(var(--st) + 76px);left:50%;transform:translateX(-50%);z-index:60}
@@ -343,7 +347,7 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
 
       <div class="fade fade-t"></div><div class="fade fade-b"></div>
       <div id="welcome">
-        <span class="who glass"><i></i>For JEE Main &amp; Advanced aspirants</span>
+        <span class="who glass"><i></i>For JEE Main & Advanced aspirants</span>
         <h1 class="w-title"><span class="ln"><span style="--d:.2s">Your JEE doubts,</span></span><span class="ln"><span style="--d:.34s"><em>solved step by step.</em></span></span></h1>
         <p class="sub">Ask in text or snap a photo. Nino explains Physics, Chemistry and Maths, then tests what you learned.</p>
         <div class="acts">
@@ -432,37 +436,37 @@ let selectedFileObject=null,examinationActive=false,isReviewMode=false,activeTes
 const USER_KEY_STORAGE='nino_user_key_session',$=id=>document.getElementById(id);
 const chat=$('chat-window'),input=$('user-input'),sendBtn=$('send-btn'),sidebar=$('sidebar'),backdrop=$('backdrop'),glow=$('glow'),fileUploader=$('file-uploader'),filePreview=$('file-preview'),historyEl=$('history'),splitContainer=$('split'),slider=$('slider'),testSection=$('test-section'),viewport=$('test-viewport');
 const isMobile=()=>window.innerWidth<768;
-const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&','<':'<','>':'>','"':'"',"'":'''}[c]));
 marked.setOptions({breaks:true});
 
 // ── SAFE LATEX & MARKDOWN NORMALIZATION ──
 function normalizeLatexDelimiters(text){
   if(!text) return '';
   let t = String(text);
-  // Normalize \[...\] to $$...$$
   t = t.replace(/\\\[([\s\S]*?)\\\]/g, (m, c) => `\n$$\n${c.trim()}\n$$\n`);
-  // Normalize \(...\) to $...$
   t = t.replace(/\\\(([\s\S]*?)\\\)/g, (m, c) => `$${c.trim()}$`);
   return t;
 }
 
-function renderMathFormulas(text){
-  if(typeof katex==='undefined') return esc(text);
-  const normalized = normalizeLatexDelimiters(text);
-  // Display Math: $$ ... $$
-  const o = normalized.replace(/\$\$([\s\S]+?)\$\$/g,(m,e)=>{
+function parseMarkdownWithMath(raw){
+  if(!raw) return '';
+  let t = normalizeLatexDelimiters(raw);
+  const maths = [];
+  const pushMath = (expr, display) => {
+    const idx = maths.length;
     try{
-      return '<div style="margin:12px 0;overflow-x:auto;max-width:100%">' +
-             katex.renderToString(e.trim(),{displayMode:true,throwOnError:false}) +
-             '</div>';
-    }catch{return esc(m);}
-  });
-  // Inline Math: $ ... $
-  return o.replace(/\$([^\$\n]+?)\$/g,(m,e)=>{
-    try{
-      return katex.renderToString(e,{displayMode:false,throwOnError:false});
-    }catch{return esc(m);}
-  });
+      const html = (typeof katex !== 'undefined')
+        ? katex.renderToString(expr.trim(), {displayMode: display, throwOnError: false})
+        : esc(expr);
+      maths.push(display ? `<div style="margin:12px 0;overflow-x:auto;max-width:100%">${html}</div>` : html);
+    }catch{ maths.push(esc(expr)); }
+    return `%%%MATH_${idx}%%%`;
+  };
+  t = t.replace(/\$\$([\s\S]+?)\$\$/g, (_, e) => pushMath(e, true));
+  t = t.replace(/\$([^\$\n]+?)\$/g, (_, e) => pushMath(e, false));
+  let h = marked.parse(t);
+  maths.forEach((m, i) => { h = h.replace(new RegExp(`<p>%%%MATH_${i}%%%</p>|%%%MATH_${i}%%%`, 'g'), m); });
+  return h;
 }
 
 function mathHTML(raw){
@@ -561,6 +565,12 @@ function toggleMenu(){const o=sidebar.classList.toggle('open');backdrop.classLis
 function useSuggestion(t){if(glow.classList.contains('busy'))return;input.value=t;send()}
 function triggerFilePicker(){fileUploader.click()}
 function setFile(f){
+  if(!f)return;
+  if(f.size > 4 * 1024 * 1024){
+    alert("File is too large (max 4 MB). Please crop or compress it before uploading.");
+    fileUploader.value="";
+    return;
+  }
   selectedFileObject=f;$('file-name').textContent=f.name||'pasted_image.png';
   $('preview-thumb').innerHTML=(f.type&&f.type.startsWith('image/'))?`<img src="${URL.createObjectURL(f)}" alt="">`:icon('doc');
   filePreview.classList.remove('hidden');updateSendState();
@@ -575,12 +585,13 @@ const normMistake=t=>['Concept','Formula','Silly'].includes(t)?t:'Concept';
 function addMessage(text,sender,hist=false,imageUrl=null,testObj=null){
   const w=document.createElement('div');w.className=`msg ${sender}`;text=text==null?'':String(text);
   if(testObj&&Array.isArray(testObj.questions)&&testObj.questions.length){
-    const m=marked.parse(renderMathFormulas(text||"Here is your practice test set."));
-    w.innerHTML=`<span class="mark">${LOGO}</span><div class="ai-text rich">${m}<div class="q-card" style="display:flex;align-items:center;gap:12px;margin:12px 0 0;max-width:420px;padding:12px 14px;animation:none"><span class="mark" style="width:40px;height:40px;border-radius:12px;box-shadow:none;font-size:19px">${icon('list')}</span><div style="flex:1;min-width:0"><b style="display:block;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(testObj.title||'Practice test')}</b><small style="color:var(--mu)">${testObj.questions.length} questions</small></div><button class="btn sm red" onclick="openLoadedPracticeTest('${esc(testObj.title)}')">Open test</button></div></div>`;
+    const m=parseMarkdownWithMath(text||"Here is your practice test set.");
+    w.innerHTML=`<span class="mark">${LOGO}</span><div class="ai-text rich">${m}<div class="q-card" style="display:flex;align-items:center;gap:12px;margin:12px 0 0;max-width:420px;padding:12px 14px;animation:none"><span class="mark" style="width:40px;height:40px;border-radius:12px;box-shadow:none;font-size:19px">${icon('list')}</span><div style="flex:1;min-width:0"><b style="display:block;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(testObj.title||'Practice test')}</b><small style="color:var(--mu)">${testObj.questions.length} questions</small></div><button class="btn sm red open-test-btn">Open test</button></div></div>`;
+    w.querySelector('.open-test-btn').onclick=()=>openLoadedPracticeTest(testObj);
   }else if(sender==='ai'){
     let t=text.replace(/```(?:xml|html|svg)?\s*(<svg[\s\S]*?<\/svg>)\s*```/gi,'$1');const svgs=[];
     t=t.replace(/<svg[\s\S]*?<\/svg>/gi,m=>{svgs.push(m);return `%%%SVG_${svgs.length-1}%%%`});
-    let h=marked.parse(renderMathFormulas(t));
+    let h=parseMarkdownWithMath(t);
     svgs.forEach((s,i)=>{const safe=s.replace(/stroke="black"/gi,'stroke="currentColor"').replace(/fill="black"/gi,'fill="currentColor"');h=h.replace(new RegExp(`<p>%%%SVG_${i}%%%</p>|%%%SVG_${i}%%%`,'g'),`<div class="svg-card">${safe}</div>`)});
     w.innerHTML=`<span class="mark">${LOGO}</span><div class="ai-text rich">${h}</div>`;
   }else{
@@ -609,8 +620,15 @@ function openTestingInterface(topic){
   timeRemainingSeconds=900;startTestingClock();renderVerificationQuestions();
 }
 
-function openLoadedPracticeTest(topic){
-  openTestingInterface(topic);
+function openLoadedPracticeTest(testObj){
+  if(!testObj || !Array.isArray(testObj.questions)) return;
+  currentTestId = testObj.test_id || currentTestId;
+  activeTestQuestions = testObj.questions.map(q => ({
+    ...q,
+    selectedAnswer: null,
+    mistakeType: normMistake(q.mistakeType)
+  }));
+  openTestingInterface(testObj.title || "Practice test");
 }
 
 function toggleMobileTestView(){if(isMobile()){testSection.classList.remove('shown');showMobileReturnButton()}}
@@ -639,7 +657,7 @@ function renderVerificationQuestions(){
     const wrong=isReviewMode && q.selectedAnswer!==q.correct;
     let solHTML='';
     if(isReviewMode && q.solution){
-      solHTML=`<div class="solution-box"><b>💡 Step-by-Step Derivation:</b><div style="margin-top:4px">${renderMathFormulas(q.solution)}</div></div>`;
+      solHTML=`<div class="solution-box"><b>💡 Step-by-Step Derivation:</b><div class="rich" style="margin-top:6px">${parseMarkdownWithMath(q.solution)}</div></div>`;
     }
     c.innerHTML=`<div class="q-top"><div style="flex:1;min-width:0"><div class="q-tags"><span class="q-num">Q${q.id||i+1}</span>${wrong?`<span class="mt ${esc(q.mistakeType)}">${esc(q.mistakeType)} mistake</span>`:''}</div><div class="q-text">${mathHTML(q.question)}</div></div><button class="btn sm" onclick="requestRealtimeDoubtSupport(${q.id||i+1})">${icon('bulb')}Explain</button></div><div class="opts" id="q-options-${i}">${optionsHTML(q,i)}</div>${solHTML}`;
     viewport.appendChild(c);
@@ -668,7 +686,7 @@ function showMobileReturnButton(){
 async function evaluateExamSubmission(){
   clearInterval(examCountdownInterval);
   if(!currentTestId){
-    alert("Test session identifier missing. Cannot submit.");
+    alert("Test session identifier missing. Please generate a fresh test.");
     return;
   }
   const answerMap = {};
@@ -682,8 +700,10 @@ async function evaluateExamSubmission(){
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({ test_id: currentTestId, answers: answerMap })
     });
-    const result = await res.json();
-    if(!res.ok) throw new Error(result.error || "Grading error");
+    const raw = await res.text();
+    let result = {};
+    try { result = JSON.parse(raw); } catch {}
+    if(!res.ok) throw new Error(result.error || `Server error (${res.status})`);
 
     isReviewMode = true;
     $('sandbox-title').textContent = "Review";
@@ -692,7 +712,6 @@ async function evaluateExamSubmission(){
     $('counter-label').textContent = "Final score";
     $('test-counter').innerHTML = `<span style="color:var(--grn)">${result.score} / ${result.total}</span>`;
 
-    // Populate active questions with verified server solutions & correct keys
     activeTestQuestions = result.questions.map(q => ({
       id: q.id,
       question: q.question,
@@ -752,9 +771,26 @@ async function send(){
     const uk=sessionStorage.getItem(USER_KEY_STORAGE);
     if(uk) headers['X-User-Key']=uk;
 
-    const res=await fetch("/guide",{method:"POST",body:fd,headers,signal:(AbortSignal.timeout?AbortSignal.timeout(120000):undefined)});
-    const data=await res.json();
+    const res=await fetch("/guide",{
+      method:"POST",
+      body:fd,
+      headers,
+      signal:(AbortSignal.timeout?AbortSignal.timeout(65000):undefined)
+    });
+    const rawText=await res.text();
+    let data={};
+    try{ data=JSON.parse(rawText); }catch{}
     $(tId)?.remove();
+
+    if(!res.ok && !data.response){
+      const msg = res.status === 504
+        ? "### Request timed out\n\nNino took too long on that one. Try asking a shorter part of the question or turn off Deep Solve."
+        : res.status === 413
+          ? "### File too large\n\nPlease upload an image or PDF smaller than 4 MB."
+          : `### Server error (${res.status})\n\nPlease try sending your message again.`;
+      addMessage(msg,"ai");
+      return;
+    }
 
     const trig=data.isTestTrigger||data.IsTestTrigger||data.istesttrigger;
     const qs=data.questions||data.Questions;
@@ -763,14 +799,20 @@ async function send(){
     if(trig && qs && qs.length){
       currentTestId = data.test_id;
       activeTestQuestions = qs.map(q=>({...q, selectedAnswer: null, mistakeType: normMistake(q.mistakeType)}));
-      addMessage(data.chatResponse||"I've opened your verified practice test.","ai",false,null,{title,questions:qs});
+      addMessage(data.chatResponse||"I've opened your verified practice test.","ai",false,null,{title,test_id:data.test_id,questions:qs});
       openTestingInterface(title);
     }else{
       addMessage(data.response||data.chatResponse||"Nino couldn't answer that just now. Try sending it again.","ai");
     }
   }catch(e){
     $(tId)?.remove();
-    addMessage("### Connection problem\n\nCouldn't reach Nino. Check your internet connection, then send your message again.","ai");
+    const isTimeout = e && (e.name === 'TimeoutError' || e.name === 'AbortError');
+    addMessage(
+      isTimeout
+        ? "### Request timed out\n\nThe solver took too long to respond. Try again or break the question into smaller steps."
+        : "### Connection problem\n\nCouldn't reach Nino. Check your internet connection, then send your message again.",
+      "ai"
+    );
   }
   finally{
     glow.classList.remove('busy');
