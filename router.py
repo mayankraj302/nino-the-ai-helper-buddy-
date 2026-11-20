@@ -1,10 +1,9 @@
 """
-router.py — Centralised multi-model router with Rate-Limit Backoff (429 Retries).
-Exact models from AI Studio:
-  - gemini-3.5-flash-lite
-  - gemini-3.8-flash
-  - gemini-4-hydrogen
-  - gemini-3.1-flash-lite / gemini-2.5-flash
+router.py — Multi-Model Router with Developer Instruction & 503/429 Auto-Healing.
+Fixes:
+  - 400 Developer Instruction invalid format
+  - 503 Model High Demand / Unavailable fallback
+  - 429 Rate Limit exponential backoff
 """
 
 import json
@@ -18,57 +17,54 @@ from google.genai import types
 from prompts import INTENT_CLASSIFIER_PROMPT
 
 # ═══════════════════════════════════════════════════════════════════════
-# 1. EXACT MODEL ROUTING TABLE
+# 1. MODEL CASCADES
 # ═══════════════════════════════════════════════════════════════════════
-NINO_MODEL_ROUTER = {
-    "utility": {
-        "primary":  "gemini-3.5-flash-lite",
-        "fallback": "gemini-3.1-flash-lite",
-        "thinking": "minimal",
-        "code_exec": False,
-        "max_tokens": 120,
-        "temperature": 0.0,
-    },
-    "concept_chat": {
-        "primary":  "gemini-3.8-flash",
-        "fallback": "gemini-2.5-flash",
-        "thinking": "low",
-        "code_exec": False,
-        "max_tokens": 1500,
-        "temperature": 0.7,
-    },
-    "doubt_solve": {
-        "primary":  "gemini-4-hydrogen",
-        "fallback": "gemini-3.8-flash",
-        "thinking": "high",
-        "code_exec": True,
-        "max_tokens": 4000,
-        "temperature": 0.3,
-    },
-    "test_generate": {
-        "primary":  "gemini-4-hydrogen",
-        "fallback": "gemini-3.8-flash",
-        "thinking": "high",
-        "code_exec": False,
-        "max_tokens": 3000,
-        "temperature": 0.4,
-    },
-    "test_verify": {
-        "primary":  "gemini-3.8-flash",
-        "fallback": "gemini-2.5-flash",
-        "thinking": "high",
-        "code_exec": True,
-        "max_tokens": 2000,
-        "temperature": 0.1,
-    },
-    "jee_advanced": {
-        "primary":  "gemini-4-hydrogen",
-        "fallback": "gemini-3.8-flash",
-        "thinking": "xhigh",
-        "code_exec": True,
-        "max_tokens": 6000,
-        "temperature": 0.2,
-    },
+MODEL_CASCADES = {
+    "utility": [
+        {"model": "gemini-3.5-flash-lite", "thinking": "minimal", "code_exec": False},
+        {"model": "gemini-3.1-flash-lite", "thinking": "minimal", "code_exec": False},
+        {"model": "gemini-2.5-flash",      "thinking": "low",     "code_exec": False},
+        {"model": "gemini-2.0-flash",      "thinking": None,      "code_exec": False},
+    ],
+    "concept_chat": [
+        {"model": "gemini-3.8-flash",      "thinking": "low",     "code_exec": False},
+        {"model": "gemini-2.5-flash",      "thinking": "low",     "code_exec": False},
+        {"model": "gemini-2.0-flash",      "thinking": None,      "code_exec": False},
+    ],
+    "doubt_solve": [
+        {"model": "gemini-4-hydrogen",     "thinking": "high",    "code_exec": True},
+        {"model": "gemini-3.8-flash",      "thinking": "high",    "code_exec": True},
+        {"model": "gemini-2.5-pro",        "thinking": "high",    "code_exec": True},
+        {"model": "gemini-2.5-flash",      "thinking": "high",    "code_exec": True},
+        {"model": "gemini-2.0-flash",      "thinking": None,      "code_exec": False},
+    ],
+    "test_generate": [
+        {"model": "gemini-4-hydrogen",     "thinking": "high",    "code_exec": False},
+        {"model": "gemini-3.8-flash",      "thinking": "high",    "code_exec": False},
+        {"model": "gemini-2.5-pro",        "thinking": "high",    "code_exec": False},
+        {"model": "gemini-2.5-flash",      "thinking": "high",    "code_exec": False},
+        {"model": "gemini-2.0-flash",      "thinking": None,      "code_exec": False},
+    ],
+    "test_verify": [
+        {"model": "gemini-3.8-flash",      "thinking": "high",    "code_exec": True},
+        {"model": "gemini-2.5-pro",        "thinking": "high",    "code_exec": True},
+        {"model": "gemini-2.5-flash",      "thinking": "high",    "code_exec": True},
+    ],
+    "jee_advanced": [
+        {"model": "gemini-4-hydrogen",     "thinking": "xhigh",   "code_exec": True},
+        {"model": "gemini-3.8-flash",      "thinking": "high",    "code_exec": True},
+        {"model": "gemini-2.5-pro",        "thinking": "high",    "code_exec": True},
+        {"model": "gemini-2.5-flash",      "thinking": "high",    "code_exec": True},
+    ],
+}
+
+DEFAULT_PARAMS = {
+    "utility":        {"max_output_tokens": 120,  "temperature": 0.0},
+    "concept_chat":   {"max_output_tokens": 1500, "temperature": 0.7},
+    "doubt_solve":    {"max_output_tokens": 4000, "temperature": 0.3},
+    "test_generate":  {"max_output_tokens": 3000, "temperature": 0.4},
+    "test_verify":    {"max_output_tokens": 2000, "temperature": 0.1},
+    "jee_advanced":   {"max_output_tokens": 6000, "temperature": 0.2},
 }
 
 _LEVEL_BUDGETS = {
@@ -84,7 +80,7 @@ _LEVEL_BUDGETS = {
 # ═══════════════════════════════════════════════════════════════════════
 _clients = {}
 _clients_lock = threading.Lock()
-DEFAULT_TIMEOUT_MS = 30_000
+DEFAULT_TIMEOUT_MS = 25_000
 
 def _get_client(api_key: str, timeout_ms: int = DEFAULT_TIMEOUT_MS):
     cache_key = (api_key, timeout_ms)
@@ -100,26 +96,26 @@ def _get_client(api_key: str, timeout_ms: int = DEFAULT_TIMEOUT_MS):
             _clients[cache_key] = client
         return client
 
-def _build_thinking_config(level: str, model_id: str):
+def _build_thinking(level: str | None, model_id: str):
     if not level:
         return None
-    # Never pass 'minimal' to 3.8-flash or 4-hydrogen (causes API 400 validation error)
+    if "2.0" in model_id:
+        return None
     if level == "minimal" and "flash-lite" not in model_id:
         level = "low"
     try:
         return types.ThinkingConfig(thinking_level=level.upper())
-    except (TypeError, ValueError, AttributeError):
+    except Exception:
         pass
     budget = _LEVEL_BUDGETS.get(level.lower(), 1024)
     try:
         return types.ThinkingConfig(thinking_budget=budget)
-    except (TypeError, ValueError, AttributeError):
+    except Exception:
         return None
 
 def _get_tools(code_exec: bool):
     if not code_exec:
         return None
-    # Valid Python SDK tool invocation
     for cls_name in ("ToolCodeExecution", "CodeExecution"):
         cls = getattr(types, cls_name, None)
         if cls:
@@ -127,79 +123,96 @@ def _get_tools(code_exec: bool):
                 return [types.Tool(code_execution=cls())]
             except Exception:
                 pass
-    return [{"code_execution": {}}]
-
-# ═══════════════════════════════════════════════════════════════════════
-# 3. SINGLE MODEL EXECUTION WITH AUTO 429 BACKOFF
-# ═══════════════════════════════════════════════════════════════════════
-def _is_rate_limit(err: str) -> bool:
-    low = (err or "").lower()
-    return "429" in low or "quota" in low or "resource_exhausted" in low
+    return None
 
 def _is_fatal(err: str) -> bool:
     low = (err or "").lower()
     return any(t in low for t in ("401", "403", "api_key_invalid", "permission_denied", "unauthenticated"))
 
-def _invoke_with_backoff(client, model_id: str, contents, system_instruction: str,
-                         thinking_level: str | None, code_exec: bool,
-                         max_tokens: int, temp: float, json_schema=None, json_mode=False):
+def _is_rate_limit(err: str) -> bool:
+    low = (err or "").lower()
+    return "429" in low or "quota" in low or "resource_exhausted" in low
+
+def _is_unavailable_503(err: str) -> bool:
+    low = (err or "").lower()
+    return "503" in low or "unavailable" in low or "high demand" in low or "overloaded" in low
+
+# ═══════════════════════════════════════════════════════════════════════
+# 3. ROBUST INVOCATION (Handles developer_instruction format & 503/429)
+# ═══════════════════════════════════════════════════════════════════════
+def _call_single_model(client, model_id: str, contents, system_instruction: str,
+                       thinking_level: str | None, code_exec: bool,
+                       max_tokens: int, temp: float, json_schema=None, json_mode=False):
     """
-    Calls the model. If 429 occurs, backs off briefly (up to 2 retries) to respect 5 RPM.
-    If thinking or tools trigger a 400 validation error, strips them safely and retries.
+    Attempts calling the model. Tries both string and types.Content for system_instruction
+    to prevent '400 Developer instruction' errors.
     """
-    for attempt in range(3):
-        # 1. Build config
-        kw = {
-            "system_instruction": system_instruction,
-            "temperature": temp,
-            "max_output_tokens": max_tokens,
-        }
-        tc = _build_thinking_config(thinking_level, model_id)
-        if tc:
-            kw["thinking_config"] = tc
-        tools = _get_tools(code_exec)
-        if tools:
-            kw["tools"] = tools
-        if json_schema is not None:
-            kw["response_mime_type"] = "application/json"
-            kw["response_schema"] = json_schema
-        elif json_mode:
-            kw["response_mime_type"] = "application/json"
+    # Try different representations of system_instruction:
+    # 1) Plain string
+    # 2) Structured types.Content
+    # 3) None (prepend to first user message if model rejects system instruction altogether)
+    sys_options = [
+        system_instruction,
+        types.Content(parts=[types.Part.from_text(text=system_instruction)]) if system_instruction else None,
+        None
+    ]
 
-        try:
-            config = types.GenerateContentConfig(**kw)
-            resp = client.models.generate_content(
-                model=model_id,
-                contents=contents,
-                config=config
-            )
-            text = getattr(resp, "text", None)
-            if text:
-                return text, None
-        except Exception as e:
-            err = str(e)
-            low = err.lower()
+    for sys_inst in sys_options:
+        effective_contents = contents
+        if sys_inst is None and system_instruction:
+            # Prepend system prompt to the user contents as fallback
+            prefixed = [types.Content(role="user", parts=[types.Part.from_text(text=f"[System Instructions: {system_instruction}]\n\n")])]
+            effective_contents = prefixed + list(contents)
 
-            # Fatal auth error -> stop immediately
-            if _is_fatal(err):
-                return None, err
+        for try_thinking in (thinking_level, None):
+            for try_tools in (code_exec, False):
+                kw = {
+                    "temperature": temp,
+                    "max_output_tokens": max_tokens,
+                }
+                if sys_inst is not None:
+                    kw["system_instruction"] = sys_inst
 
-            # Rate limit -> back off 1.5s - 3s
-            if _is_rate_limit(err):
-                if attempt < 2:
-                    wait_time = (2 ** attempt) + random.uniform(0.5, 1.5)
-                    print(f"[{model_id} 429 Rate Limit]: waiting {wait_time:.1f}s (attempt {attempt+1}/3)...")
-                    time.sleep(wait_time)
-                    continue
-                return None, err
+                tc = _build_thinking(try_thinking, model_id)
+                if tc:
+                    kw["thinking_config"] = tc
+                tools = _get_tools(try_tools)
+                if tools:
+                    kw["tools"] = tools
+                if json_schema is not None:
+                    kw["response_mime_type"] = "application/json"
+                    kw["response_schema"] = json_schema
+                elif json_mode:
+                    kw["response_mime_type"] = "application/json"
 
-            # Validation error with thinking or tools -> retry without them
-            if ("thinking" in low or "tool" in low or "invalid_argument" in low) and (thinking_level or code_exec):
-                thinking_level = None
-                code_exec = False
-                continue
+                try:
+                    config = types.GenerateContentConfig(**kw)
+                    resp = client.models.generate_content(
+                        model=model_id,
+                        contents=effective_contents,
+                        config=config
+                    )
+                    text = getattr(resp, "text", None)
+                    if text:
+                        return text, None
+                except Exception as e:
+                    err = str(e)
+                    low = err.lower()
 
-            return None, err
+                    if _is_fatal(err):
+                        return None, err
+                    if _is_unavailable_503(err) or _is_rate_limit(err) or "404" in low or "not_found" in low:
+                        return None, err
+
+                    # If error is about developer instruction, break to next sys_inst variant
+                    if "developer instruction" in low:
+                        break
+
+                    # If error is about thinking or tools, loop will retry with None
+                    if "thinking" in low or "tool" in low or "invalid_argument" in low:
+                        continue
+
+                    return None, err
 
     return None, "empty_response"
 
@@ -209,66 +222,61 @@ def _invoke_with_backoff(client, model_id: str, contents, system_instruction: st
 def generate(route_type: str, contents, system_instruction: str, api_key: str,
              json_schema=None, **overrides):
     """
-    Route to the primary model. If primary model fails or is rate-limited beyond backoff,
-    falls back cleanly to the backup model.
+    Cascades through models for this route_type.
+    If gemini-3.8-flash returns 503 UNAVAILABLE, automatically cascades to 2.5-flash / 2.0-flash!
     """
     if not api_key:
         return None, "no_key"
 
-    cfg = NINO_MODEL_ROUTER.get(route_type)
-    if not cfg:
+    cascade = MODEL_CASCADES.get(route_type)
+    if not cascade:
         return None, f"unknown_route: {route_type}"
+
+    params = DEFAULT_PARAMS.get(route_type, {"max_output_tokens": 2000, "temperature": 0.4})
+    max_tokens = overrides.get("max_output_tokens", params["max_output_tokens"])
+    temp = overrides.get("temperature", params["temperature"])
+    json_mode = overrides.get("json_mode", False)
 
     try:
         client = _get_client(api_key, overrides.get("timeout_ms", DEFAULT_TIMEOUT_MS))
     except Exception as exc:
         return None, f"client_init: {exc}"
 
-    primary_model = cfg["primary"]
-    fallback_model = cfg["fallback"]
-    thinking = overrides.get("thinking_level", cfg["thinking"])
-    code_exec = overrides.get("code_execution", cfg["code_exec"])
-    max_tokens = overrides.get("max_output_tokens", cfg["max_tokens"])
-    temp = overrides.get("temperature", cfg["temperature"])
-    json_mode = overrides.get("json_mode", False)
+    last_error = None
+    for step in cascade:
+        model_id = step["model"]
+        thinking = overrides.get("thinking_level", step["thinking"])
+        code_exec = overrides.get("code_execution", step["code_exec"])
 
-    # 1. Try Primary Model (with rate-limit backoff)
-    text, err = _invoke_with_backoff(
-        client=client,
-        model_id=primary_model,
-        contents=contents,
-        system_instruction=system_instruction,
-        thinking_level=thinking,
-        code_exec=code_exec,
-        max_tokens=max_tokens,
-        temp=temp,
-        json_schema=json_schema,
-        json_mode=json_mode
-    )
-    if text:
-        return text, None
+        # Try up to 2 attempts for 429 rate limit
+        for retry in range(2):
+            text, err = _call_single_model(
+                client=client,
+                model_id=model_id,
+                contents=contents,
+                system_instruction=system_instruction,
+                thinking_level=thinking,
+                code_exec=code_exec,
+                max_tokens=max_tokens,
+                temp=temp,
+                json_schema=json_schema,
+                json_mode=json_mode
+            )
+            if text:
+                return text, None
 
-    if err and _is_fatal(err):
-        return None, err
+            last_error = err
+            if _is_fatal(err):
+                return None, err
 
-    # 2. Try Fallback Model
-    print(f"[router] {primary_model} hit issue ({str(err)[:100]}). Falling back to {fallback_model}...")
-    text2, err2 = _invoke_with_backoff(
-        client=client,
-        model_id=fallback_model,
-        contents=contents,
-        system_instruction=system_instruction,
-        thinking_level="low" if thinking in ("high", "xhigh") else thinking,
-        code_exec=code_exec,
-        max_tokens=max_tokens,
-        temp=temp,
-        json_schema=json_schema,
-        json_mode=json_mode
-    )
-    if text2:
-        return text2, None
+            if _is_rate_limit(err) and retry == 0:
+                time.sleep(1.5)
+                continue
+            break
 
-    return None, err2 or err
+        print(f"[router] {model_id} failed ({str(last_error)[:100]}). Cascading to next model...")
+
+    return None, last_error
 
 def friendly_error(err: str) -> str:
     if err == "no_key":
@@ -276,7 +284,9 @@ def friendly_error(err: str) -> str:
     if err and _is_fatal(err):
         return "That Gemini API key looks invalid or lacks permission. Please check it in Settings."
     if err and _is_rate_limit(err):
-        return "Nino is receiving heavy traffic (AI quota limit reached on this model). Please wait ~15-30 seconds and send again, or paste your personal Gemini key in Settings."
+        return "Nino is receiving heavy traffic (daily AI quota reached). Please wait a moment or add your own key in Settings."
+    if err and _is_unavailable_503(err):
+        return "Google's preview model is currently overloaded. Nino is rerouting your request, please tap send again!"
     return f"Nino encountered an error: {str(err)[:80]}. Please try sending your message again."
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -319,7 +329,6 @@ def classify_intent(
 ) -> str:
     text = (text or "").strip()
 
-    # Stage 1: Deterministic rules (instant, saves tokens and quota)
     if is_test_endpoint:
         return "test_generate"
     if deep_solve:
@@ -333,11 +342,9 @@ def classify_intent(
     if _DOUBT_RE.search(text):
         return "doubt_solve"
 
-    # Sticky follow-up check
     if previous_route in ("doubt_solve", "jee_advanced") and _SHORT_FOLLOWUP_RE.match(text):
         return previous_route
 
-    # Stage 2: AI Enum Classifier for ambiguous queries
     if api_key and len(text) > 8:
         try:
             contents = [types.Content(role="user", parts=[types.Part.from_text(text=text)])]
