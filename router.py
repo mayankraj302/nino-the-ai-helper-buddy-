@@ -39,11 +39,10 @@ MODEL_CASCADES = {
         {"model": "gemini-2.0-flash",      "thinking": None,      "code_exec": False},
     ],
     "test_generate": [
-        {"model": "gemini-4-hydrogen",     "thinking": "high",    "code_exec": False},
         {"model": "gemini-3.8-flash",      "thinking": "high",    "code_exec": False},
+        {"model": "gemini-4-hydrogen",     "thinking": "high",    "code_exec": False},
+        {"model": "gemini-2.5-flash",      "thinking": "low",     "code_exec": False},
         {"model": "gemini-2.5-pro",        "thinking": "high",    "code_exec": False},
-        {"model": "gemini-2.5-flash",      "thinking": "high",    "code_exec": False},
-        {"model": "gemini-2.0-flash",      "thinking": None,      "code_exec": False},
     ],
     "test_verify": [
         {"model": "gemini-3.8-flash",      "thinking": "high",    "code_exec": True},
@@ -80,7 +79,7 @@ _LEVEL_BUDGETS = {
 # ═══════════════════════════════════════════════════════════════════════
 _clients = {}
 _clients_lock = threading.Lock()
-DEFAULT_TIMEOUT_MS = 25_000
+DEFAULT_TIMEOUT_MS = 50_000
 
 def _get_client(api_key: str, timeout_ms: int = DEFAULT_TIMEOUT_MS):
     cache_key = (api_key, timeout_ms)
