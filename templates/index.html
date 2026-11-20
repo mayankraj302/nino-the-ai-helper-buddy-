@@ -1231,6 +1231,8 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, [tabindex]:fo
   gap: 8px;
 }
 .opt {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1241,8 +1243,19 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, [tabindex]:fo
   font-size: 15px;
   background: var(--gl);
   border: 1px solid var(--gb);
-  transition: background 0.2s, transform 0.35s var(--ease), border-color 0.2s, box-shadow 0.2s;
+  box-shadow: inset 0 1px 0 var(--hi);
+  transition: background 0.25s, transform 0.35s var(--ease), border-color 0.25s, box-shadow 0.35s;
   cursor: pointer;
+}
+.opt:after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s;
+  background: radial-gradient(200px circle at var(--ox, 50%) var(--oy, 50%), rgba(255, 255, 255, 0.16), transparent 70%);
 }
 .opt .lt {
   width: 30px;
@@ -1261,7 +1274,12 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, [tabindex]:fo
 @media (hover: hover) {
   .opt:hover:not(:disabled) {
     background: var(--gl2);
-    transform: translateX(3px);
+    border-color: var(--blue);
+    transform: translateX(4px);
+    box-shadow: 0 6px 20px rgba(10, 132, 255, 0.18), inset 0 1px 0 var(--hi);
+  }
+  .opt:hover:not(:disabled):after {
+    opacity: 1;
   }
 }
 .opt:active:not(:disabled) {
@@ -1838,7 +1856,7 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, [tabindex]:fo
       </button>
       <button class="sb-item" onclick="openSettings()">
         <span class="ic" style="background:linear-gradient(135deg,#98989d,#636366)"><svg class="icon" data-icon="gear"></svg></span>
-        Settings &amp; BYOK
+        Settings
       </button>
     </div>
   </aside>
@@ -1919,11 +1937,8 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, [tabindex]:fo
             <input type="file" id="file-uploader" accept=".png,.jpg,.jpeg,.webp,.pdf,image/*" class="hidden" onchange="handleFileSelection(event)">
             <input type="file" id="camera-uploader" accept="image/*" capture="environment" class="hidden" onchange="handleFileSelection(event)">
 
-            <button type="button" class="plus-btn" onclick="triggerFilePicker()" aria-label="Attach photo or PDF doubt" title="Upload Photo or Document">
+            <button type="button" class="plus-btn" onclick="triggerFilePicker()" aria-label="Attach file" title="Attach image or file">
               <svg class="icon" data-icon="plus"></svg>
-            </button>
-            <button type="button" class="cam-btn plus-btn" onclick="triggerCameraCapture()" aria-label="Snap photo with camera" title="Take Photo Doubt">
-              <svg class="icon" data-icon="camera"></svg>
             </button>
 
             <textarea id="user-input" rows="1" placeholder="Ask Nino anything…" aria-label="Doubt prompt"></textarea>
@@ -2003,21 +2018,21 @@ button:focus-visible, textarea:focus-visible, input:focus-visible, [tabindex]:fo
   <div class="modal-sheet" onclick="event.stopPropagation()">
     <div class="modal-nav">
       <span style="width:70px"></span>
-      <b>Settings &amp; BYOK</b>
+      <b>Settings</b>
       <button class="btn sm red" onclick="closeModal('settings-modal')">Done</button>
     </div>
     <div class="modal-body">
-      <div class="gl">Mentor Explanation Style</div>
+      <div class="gl">Mentor style</div>
       <div class="seg" id="seg-persona">
         <button data-v="adaptive" class="on" onclick="pickSeg('seg-persona',this)">Adaptive</button>
-        <button data-v="strict" onclick="pickSeg('seg-persona',this)">Rigorous</button>
-        <button data-v="supportive" onclick="pickSeg('seg-persona',this)">Intuitive</button>
+        <button data-v="strict" onclick="pickSeg('seg-persona',this)">Strict</button>
+        <button data-v="supportive" onclick="pickSeg('seg-persona',this)">Supportive</button>
       </div>
-      <p class="note" id="persona-note">Balances foundational intuition with mathematical rigor.</p>
+      <p class="note" id="persona-note">Balances empathy and logic.</p>
 
-      <div class="gl" style="margin-top:16px">Personal Gemini API Key (BYOK)</div>
-      <input id="user-key-input" class="key-input" type="password" autocomplete="off" placeholder="Paste your Gemini key (AIzaSy...)">
-      <p class="note">🔒 Your key is stored exclusively in this browser tab's <code>sessionStorage</code>. It is never written to disk or logs and automatically clears upon tab closure.</p>
+      <div class="gl" style="margin-top:12px">Your own Gemini key (optional)</div>
+      <input id="user-key-input" class="key-input" type="password" autocomplete="off" placeholder="Paste your key">
+      <p class="note">Stored only in this browser, never on our server. Leave empty to use Nino's shared quota.</p>
 
       <button id="save-settings-btn" class="btn red btn-save" onclick="saveSettings()">Save settings</button>
     </div>
@@ -2804,6 +2819,7 @@ async function send() {
   thinkEl.innerHTML = `<span class="mark">${LOGO}</span><div class="ai-text"><div class="thinking"><i></i>${deepSolveActive ? 'Nino is performing deep JEE Advanced derivation...' : 'Nino is solving step-by-step...'}</div></div>`;
   chat.appendChild(thinkEl);
   glow.classList.add('busy');
+  updateIslandState(true);
   updateSendState();
   chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' });
 
@@ -2855,6 +2871,7 @@ async function send() {
     addMessage("### Connection Problem\n\nUnable to reach Nino solver. Please verify your connection and try again.", "ai");
   } finally {
     glow.classList.remove('busy');
+    updateIslandState(false);
     updateSendState();
   }
 }
@@ -3008,6 +3025,34 @@ window.addEventListener('paste', e => {
     }
   }
 });
+
+// ── DYNAMIC ISLAND & HOVER EFFECTS ──
+function updateIslandState(busy) {
+  const nb = $('navbar');
+  const islText = $('island-t');
+  const isTiming = examinationActive && !isReviewMode;
+  if (!nb) return;
+
+  if (busy) {
+    nb.classList.add('isl');
+    nb.classList.remove('timing');
+    if (islText) islText.textContent = deepSolveActive ? "Nino is solving (Advanced)" : "Nino is thinking";
+  } else if (isTiming) {
+    nb.classList.add('isl', 'timing');
+    if (islText) islText.textContent = ($('countdown')?.textContent || "15:00") + " left";
+  } else {
+    nb.classList.remove('isl', 'timing');
+  }
+}
+
+document.addEventListener('pointermove', e => {
+  const opt = e.target.closest && e.target.closest('.opt');
+  if (opt) {
+    const r = opt.getBoundingClientRect();
+    opt.style.setProperty('--ox', (e.clientX - r.left) + 'px');
+    opt.style.setProperty('--oy', (e.clientY - r.top) + 'px');
+  }
+}, { passive: true });
 
 window.addEventListener('DOMContentLoaded', () => {
   updateStaticIcons();
