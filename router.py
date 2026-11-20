@@ -46,7 +46,6 @@ MODEL_CASCADES = {
     "concept_chat": [
         {"model": "gemini-3.8-flash",      "thinking": "low",     "code_exec": False},
         {"model": "gemini-2.5-flash",      "thinking": "low",     "code_exec": False},
-        {"model": "gemini-2.0-flash",      "thinking": None,      "code_exec": False},
     ],
     "doubt_solve": [
         {"model": "gemini-4-hydrogen",     "thinking": "high",    "code_exec": True},
