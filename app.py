@@ -426,6 +426,8 @@ CORRECTNESS PROTOCOL (run silently inside "scratchpad" BEFORE writing "question"
 4. Only after verification, write the final clean "question" text. NEVER include drafting phrases, self-corrections, or thinking out loud ("Wait", "Let us", "or rather", "Consider instead") inside "question".
 5. Write 4 algebraically distinct options: one exact match, three distractors from realistic student errors. Never write two options that are algebraically equivalent forms of the same expression.
 6. Distractors must have the same form, units and length as the answer. Never use "all/none/both of the above".
+7. Syllabus & IUPAC strictness: Stick strictly to official JEE Advanced NCERT + standard JEE coaching syllabus (no graduate-level reactions like intramolecular Diels-Alder tether stereochemistry). Double-check every IUPAC name spelling character-by-character in "scratchpad" before writing "question".
+8. Carbohydrate/multi-product check: When a reaction produces a mixture of diastereomers (e.g. Kiliani-Fischer elongation), state whether "both epimers" or "the major epimer" is being tested so only ONE option is uniquely correct.
 
 FORMAT (strict)
 - Output ONLY one JSON object, nothing before or after:
