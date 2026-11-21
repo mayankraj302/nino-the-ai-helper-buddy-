@@ -9,6 +9,7 @@ import threading
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timezone
+
 import requests
 from flask import Flask, request, jsonify, render_template, make_response
 from google import genai
@@ -26,7 +27,6 @@ FAST_MODELS = [
     "gemini-3.1-flash-lite",
     "gemini-2.5-flash-lite",
 ]
-
 # High-reasoning models (5 RPM each) for full JEE solutions, SVGs, and uploaded files
 REASONING_MODELS = [
     "gemini-3.8-flash",
@@ -34,9 +34,10 @@ REASONING_MODELS = [
     "gemini-3.5-flash-lite",
 ]
 
-GEMINI_TIMEOUT_MS = 20000       # never hang longer than this per model
+GEMINI_TIMEOUT_MS = 25000       # never hang longer than this per model
 TEST_BATCH_SIZE = 3             # questions per parallel Gemini call
-TEST_THINKING_BUDGET = 256      # tokens the model may "think" per test batch
+TEST_THINKING_BUDGET = 1024     # enough room for 3 JEE Advanced derivations without spilling into output
+
 THINKING = {                    # per chat kind: (thinking tokens, visible tokens)
     "chat":     (0,    700),    # emotional / small talk -> fastest
     "doubt":    (512,  900),    # hint-only doubt solving
@@ -47,15 +48,19 @@ THINKING = {                    # per chat kind: (thinking tokens, visible token
 # ---------------- File validation ----------------
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'pdf'}
 
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 # ---------------- Usage limiting & keys (UNCHANGED) ----------------
 DAILY_LIMIT = 15
 _usage = {}  # {(visitor_id, iso_date): count}  -- move to a database later
 
+
 def get_visitor_id():
     return request.cookies.get("nino_vid") or request.remote_addr or "unknown"
+
 
 def within_daily_limit(visitor_id):
     key = (visitor_id, date.today().isoformat())
@@ -65,6 +70,7 @@ def within_daily_limit(visitor_id):
     _usage[key] = count + 1
     return True
 
+
 def get_api_key():
     """Returns (key, is_owner_key). A user's own key bypasses the daily limit."""
     user_key = (request.headers.get("X-User-Key") or "").strip()
@@ -72,9 +78,11 @@ def get_api_key():
         return user_key, False
     return os.environ.get("GEMINI_API_KEY"), True
 
+
 # ---------------- Background work (Discord must never slow a reply) ----------------
 _bg_pool = ThreadPoolExecutor(max_workers=4)
 _test_pool = ThreadPoolExecutor(max_workers=8)
+
 
 def run_bg(fn, *args):
     try:
@@ -82,7 +90,9 @@ def run_bg(fn, *args):
     except Exception as e:
         print(f"[bg ERROR]: {e}")
 
+
 CUTOFF_MESSAGE = "That test got cut off while I was generating it. Ask me again and I'll rebuild it."
+
 
 def looks_like_test_json(text):
     """True when text smells like a (possibly broken/truncated) test payload."""
@@ -90,6 +100,7 @@ def looks_like_test_json(text):
     if re.match(r'\s*(?:```(?:json)?\s*)?\{\s*"chatResponse"', text, re.IGNORECASE):
         return True
     return bool(re.search(r'"questions"\s*:', text) and re.search(r'"options"\s*:', text))
+
 
 def parse_ai_json(text):
     """
@@ -127,6 +138,7 @@ def parse_ai_json(text):
         return None
     return parsed
 
+
 def unpack_envelope(envelope):
     """Normalises the envelope's keys (any casing) into plain Python values."""
     n = {str(k).lower(): v for k, v in envelope.items()}
@@ -140,9 +152,11 @@ def unpack_envelope(envelope):
         "questions": questions,
     }
 
+
 # ---------------- Session storage ----------------
 class SessionManager:
     """Manages session persistence safely using a local JSON file."""
+
     def __init__(self, filepath="local_memory.json"):
         self.filepath = filepath
         self._lock = threading.Lock()
@@ -242,6 +256,7 @@ class SessionManager:
             self._sessions[username]["history"] = history[-40:]
             self._save_memory()
 
+
 session_store = SessionManager()
 session_store.migrate_legacy_history()
 
@@ -250,6 +265,7 @@ session_store.migrate_legacy_history()
 # ======================================================================
 _clients = {}
 _clients_lock = threading.Lock()
+
 
 def get_client(api_key):
     """Re-use clients (saves connection setup on every message)."""
@@ -265,6 +281,7 @@ def get_client(api_key):
             _clients[api_key] = client
         return client
 
+
 def _make_config(system_instruction, temperature, max_tokens, thinking_budget, json_mode, use_thinking):
     kw = dict(system_instruction=system_instruction, temperature=temperature, max_output_tokens=max_tokens)
     if json_mode:
@@ -272,6 +289,7 @@ def _make_config(system_instruction, temperature, max_tokens, thinking_budget, j
     if use_thinking and thinking_budget is not None:
         kw["thinking_config"] = types.ThinkingConfig(thinking_budget=thinking_budget)
     return types.GenerateContentConfig(**kw)
+
 
 def generate_text(contents, system_instruction, api_key, models=FAST_MODELS, temperature=0.7, max_tokens=1024, thinking_budget=None, json_mode=False):
     """
@@ -285,6 +303,7 @@ def generate_text(contents, system_instruction, api_key, models=FAST_MODELS, tem
     except Exception as e:
         print(f"[Gemini init ERROR]: {e}")
         return None, "init"
+
     last_error = None
     for model in models:
         for use_thinking in (True, False):
@@ -312,6 +331,7 @@ def generate_text(contents, system_instruction, api_key, models=FAST_MODELS, tem
                 break
     return None, last_error
 
+
 def friendly_error(err):
     if err == "no_key":
         return "Nino isn't configured yet. Please add a Gemini key in Settings or try later."
@@ -320,6 +340,7 @@ def friendly_error(err):
     if err and ("429" in err or "quota" in err.lower()):
         return "Nino is very busy right now (daily AI quota reached). Please try again later, or add your own Gemini key in Settings."
     return "Nino couldn't answer that just now. Please try again in a moment."
+
 
 # ======================================================================
 # CHAT PROMPT (roles + doubt solving). Tests live in TEST_SYSTEM below.
@@ -338,18 +359,18 @@ You shift roles turn by turn from the student's intent (infer intent even if phr
 
 1A. SELF-DOUBT ("I can't make IIT", "I'm useless", "peers are ahead")
 Persona: an elder brother/sister sitting beside a younger sibling. Never claim you personally went through this.
-Do: (1) Address the pain in the student's own context. (2) Reduce: gently push back on the negative narrative; doubt is not truth. (3) Depict: briefly paint life after cracking JEE (proud parents, relief, friends, quiet satisfaction).
-8-10 lines. End with one simple, caring question. Tone: direct, warm, honest. Default to Hinglish.
+Do: (1) Address the pain in the student's own context. (2) Reduce: gently push back on the negative narrative; doubt is not truth. (3) Depict: briefly paint life after cracking JEE (proud parents, relief, friends, quiet satisfaction). 8-10 lines. End with one simple, caring question.
+Tone: direct, warm, honest. Default to Hinglish.
 
 1B. TARGET / TASK ("rank under 1000", "finish this chapter today")
 Persona: a tutor who values consistency and zero distraction.
-Do: (1) Address the named target. (2) Resources: if they want a plan, give a concrete one. (3) Ability: ask if they can commit; if yes push them to execute and report back at day's end. (4) Depict the payoff briefly.
-8-10 lines. Close with an accountability question ("so, starting now?"). Tone: straight, honest, slightly strict.
+Do: (1) Address the named target. (2) Resources: if they want a plan, give a concrete one. (3) Ability: ask if they can commit; if yes push them to execute and report back at day's end. (4) Depict the payoff briefly. 8-10 lines. Close with an accountability question ("so, starting now?").
+Tone: straight, honest, slightly strict.
 
 1C. BURNOUT / ISOLATION ("I feel so alone", "I don't want to do this anymore", exhaustion)
 Persona: a roommate who is just there, non-judgmental. Never claim you personally went through this.
-Do: (1) Address only the cause the student names; never assume one. (2) Make clear this is a judgment-free space. (3) Motivate: struggle and isolation do not disqualify anyone. (4) Depict life after JEE briefly. (5) If they sound burnt out, suggest a short break and reaching out to a friend or parent; frame burnout as temporary.
-8-10 lines. Tone: calm, friendly, not clinical. Match the student's language.
+Do: (1) Address only the cause the student names; never assume one. (2) Make clear this is a judgment-free space. (3) Motivate: struggle and isolation do not disqualify anyone. (4) Depict life after JEE briefly. (5) If they sound burnt out, suggest a short break and reaching out to a friend or parent; frame burnout as temporary. 8-10 lines.
+Tone: calm, friendly, not clinical. Match the student's language.
 
 SAFETY (overrides everything, always)
 - Self-harm or suicidal language: gently say this is not the way through, stay warm and non-judgmental, and give police 112 and ambulance 108. This comes before any other format or role.
@@ -365,15 +386,20 @@ Silent analysis (always, before replying):
 - Chemistry: flag trap words (NOT, EXCEPT, STP, chiral); for organic draw structures and identify reagent role and mechanism; for inorganic use oxidation state, configuration and VSEPR/MOT; for physical write the blank formula, balance first, check units.
 - Maths: fix domain and existence conditions first (log bases, roots, denominators, inverse-trig ranges); use symmetry; choose the cheapest method; at the end reject extraneous roots and confirm you answered exactly what was asked.
 - VERIFY: solve fully, then confirm the result a second independent way (substitute back, limiting case, or alternate method). Everything you say must agree with the verified answer. If the two ways disagree, redo the work; never present an unverified answer.
+
 Two-stage response:
 - STAGE 1 (default, hint only): you are the sharp senior who already cracked JEE, confident, casual, zero fluff. Give ONLY the one key insight or starting move that unlocks the problem, the thing that makes the student think "oh, I've got it". Maximum 4-5 lines. Do NOT give the full solution and do NOT state the final answer unprompted; that kills their own thinking.
 - STAGE 2 (only when the student explicitly asks for the complete/full solution): the entire derivation, no skipped algebra, coordinates and variables defined, ending with a sanity check (dimensional check or limiting case). Format the final answer to the question type.
+
 Visual explanation (asked to "explain visually", "diagram"): output clean raw SVG directly in the text (no markdown code fences), with a proper viewBox, using stroke="currentColor" and fill="currentColor" instead of black so it shows on dark themes. Always pair it with a short text breakdown of the steps.
+
 Mistake analysis (message contains "Diagnostic Evaluation Completed", "analyze my mistakes" or test score results): read the chat to see where marks were lost (Concept, Formula or Silly). Concept: name the exact theorem/law misunderstood and re-explain briefly. Formula: give a derivation method or mnemonic so they stop memorising blindly. Silly: give a strict execution protocol (e.g. "write minus signs larger", "set the coordinate frame before resolving vectors"). No generic "work harder" lines. Be strict, analytical, actionable; mistakes are mechanical errors to patch, not moral failures.
+
 Tone for doubts: a respected senior, not a textbook. Direct, casual, confident; trust the student's intelligence.
 
 CLOSING
 End every reply with exactly ONE simple question suited to the active role: accountability for Task, an open door for Burnout, encouragement for Self-Doubt, "want the full solution?" for a Stage-1 hint. Exceptions: safety replies. Never stack questions. Never break character to explain which role you are in."""
+
 
 # ======================================================================
 # TEST GENERATION (separate prompt, parallel batches, server-side checks)
@@ -382,7 +408,7 @@ TEST_SYSTEM = r"""You are a JEE paper-setting committee member (JEE Advanced + t
 
 DIFFICULTY BAR (non-negotiable)
 - Target: a well-prepared JEE Main student needs 3-4 minutes and still gets it wrong most of the time.
-- REJECT any question solvable by recalling a fact, plugging into one formula, quoting a standard result, or a one-step calculation. If a student who only knows the textbook formula would get it right, rebuild it.
+- REJECT any question solvable by recalling a fact, plugging into one formula, quoting a standard result, or a one-step calculation.
 - Every question must force the assigned TWIST: an intermediate deduction the student must make before any formula applies.
 - Combine 2-3 concepts only where natural; otherwise go deeper in one concept. Never bolt on artificial links.
 - Numbers must be clean. Difficulty = hidden constraint, limiting/boundary case, symmetry, competing effects, parameter-dependent cases, domain/extraneous-root traps.
@@ -393,26 +419,25 @@ LEVEL ANCHORS (to calibrate level and style only; never reuse these)
 - Chemistry: pH of 1e-8 M HCl (a student who ignores water autoionisation answers 8) -> about 6.98.
 - Maths: number of real solutions of sin x = x/10 (needs graph bounds and counting per period) -> 7.
 
-CORRECTNESS PROTOCOL (run silently for every question)
-1. State every needed assumption in the question (g value, ideal/real, constants like R or log 2, domain, conditions) so exactly one reading exists.
-2. Solve it fully in the "solution" field, then re-check by a second independent method or by substituting numbers. If the two disagree, discard and write a new question.
-3. Only then write the options: one correct, three distractors each from a specific realistic student error (sign slip, wrong formula, lost root, misapplied trend, skipped constraint). Name the main trap in the solution.
-4. Check all four options against your verified answer: exactly one matches. If not, discard and rebuild. Never patch.
-5. Distractors must have the same form, units and length as the answer. Never use "all/none/both of the above" or options that give the answer away.
-- Chemistry: use only settled NCERT/standard JEE facts; avoid exceptions with disputed textbook answers; describe organic structures unambiguously.
-- Maths: state the domain; the answer must be exact and unique.
-- Physics: give all data with units and say what is neglected.
+CORRECTNESS PROTOCOL (run silently inside "scratchpad" BEFORE writing "question")
+1. Use the "scratchpad" field to design the problem, check edge/initial conditions, solve it completely, and verify via a second independent method or numerical substitution.
+2. Physics boundary check: verify initial motion/threshold conditions (e.g., if released from rest on a rough surface, ensure driving force exceeds static friction at t=0; ensure friction on curved surfaces yields an integrable analytical answer, NOT a non-integrable transcendental ODE).
+3. Chemistry check: verify exact reagent products (e.g., solvolysis in ethanol gives an ethyl ether, NOT an alcohol) and exact IUPAC names after any carbocation rearrangement.
+4. Only after verification, write the final clean "question" text. NEVER include drafting phrases, self-corrections, or thinking out loud ("Wait", "Let us", "or rather", "Consider instead") inside "question".
+5. Write 4 algebraically distinct options: one exact match, three distractors from realistic student errors. Never write two options that are algebraically equivalent forms of the same expression.
+6. Distractors must have the same form, units and length as the answer. Never use "all/none/both of the above".
 
 FORMAT (strict)
 - Output ONLY one JSON object, nothing before or after:
-  {"questions":[{"question":"...","solution":"...","options":["...","...","...","..."],"correct":0,"mistakeType":"Concept"}]}
-- Keys in exactly that order: "solution" comes BEFORE "options" so you finish the maths before writing options.
+  {"questions":[{"scratchpad":"...","question":"...","solution":"...","options":["...","...","...","..."],"correct":0,"mistakeType":"Concept"}]}
+- Keys in this exact order: "scratchpad" FIRST so all drafting and math verification happens before "question" is written.
+- "question": final exam-ready problem statement ONLY. Clean, concise, zero internal monologue.
 - "solution": at most 70 words: key steps, the verified final value, and the main trap.
-- "options": exactly 4 distinct strings. "correct": zero-based index of the right option. Put the right option anywhere.
-- "mistakeType": the failure point the question tests: "Concept", "Formula" or "Silly".
+- "options": exactly 4 distinct, non-equivalent strings. "correct": zero-based index (0-3) of the right option.
+- "mistakeType": "Concept", "Formula", or "Silly".
 - All maths in single-dollar LaTeX: $V_x$, $K_{eq}$, $2\\sqrt{2}$, $(CH_3)_3C^+$. Never plain "2root2" or unicode sub/superscripts.
 - Inside JSON strings EVERY LaTeX backslash must be doubled (\\frac, \\sqrt, \\theta). No raw newlines inside strings. No trailing commas. No markdown.
-- Never copy wording, numbers or option sets of known PYQs or books. If recognisably close to a known question, rebuild it."""
+- Never copy wording, numbers or option sets of known PYQs or books."""
 
 TIER1 = {
     "Physics": ["Modern Physics", "Electrostatics", "Current Electricity", "Magnetism and EMI", "Rotational Mechanics", "SHM and Waves"],
@@ -447,11 +472,13 @@ TEST_REQ_RE = re.compile(
 )
 NOT_TEST_RE = re.compile(r"\b(hint|solve|solution|explain|doubt|stuck|help|why|wrong|mistake|diagnostic|analy[sz]e|review|score)\b", re.I)
 
+
 def is_test_request(text):
     text = text or ""
     if len(text) > 300:   # pasted problems are doubts, not test requests
         return False
     return bool(TEST_REQ_RE.search(text)) and not NOT_TEST_RE.search(text)
+
 
 def parse_test_request(text):
     """-> (count, subject or None, topic hint or '')"""
@@ -467,12 +494,14 @@ def parse_test_request(text):
             hint.append(w)
     return count, subject, " ".join(hint)[:60]
 
+
 def _ordered_topics(subject, n):
     t1, t2 = TIER1[subject][:], TIER2[subject][:]
     random.shuffle(t1)
     random.shuffle(t2)
     pool = t1 + t2
     return [pool[i % len(pool)] for i in range(n)]
+
 
 def build_specs(count, subject, hint):
     twists = [TWISTS[i % len(TWISTS)] for i in range(count)]
@@ -495,6 +524,7 @@ def build_specs(count, subject, hint):
                 j += 1
     return specs
 
+
 def chunk_specs(specs, size=TEST_BATCH_SIZE):
     k = max(1, math.ceil(len(specs) / size))
     base, extra = divmod(len(specs), k)
@@ -505,6 +535,7 @@ def chunk_specs(specs, size=TEST_BATCH_SIZE):
         i += n
     return out
 
+
 def test_title(subject, hint, specs):
     if hint:
         return f"{subject + ': ' if subject else ''}{hint.title()}"
@@ -513,12 +544,15 @@ def test_title(subject, hint, specs):
         return f"{subject}: " + " & ".join(names) + (" +more" if len(specs) > 2 else "")
     return "Mixed PCM Challenge"
 
+
 # ---- JSON repair (LaTeX backslashes are the #1 cause of broken tests) ----
 _BACKSLASH = re.compile(r'\\\\|\\(?!["/]|u[0-9a-fA-F]{4})')
+
 
 def fix_latex_backslashes(raw):
     """Keep valid pairs ('\\\\'), double every lone backslash that isn't \\" \\/ \\uXXXX."""
     return _BACKSLASH.sub(lambda m: m.group(0) if m.group(0) == '\\\\' else '\\\\', raw)
+
 
 def parse_json_loose(text):
     if not text:
@@ -537,35 +571,60 @@ def parse_json_loose(text):
             continue
     return None
 
+
 _GIVEAWAY = re.compile(r'\b(all|none|neither|both)\b[^.]{0,12}\b(above|these|of)\b|\bnone of\b|\ball of\b', re.I)
 
+# Reject any question where the LLM leaked its chain-of-thought drafting into the prompt
+_COT_LEAK_RE = re.compile(
+    r'(?:^|[.?!]\s+)(?:wait\b|let\s+us\s+(?:frame|use|consider|check|reframe)|or\s+rather\b|actually\b|instead\s+let)',
+    re.I
+)
+
+
+def _norm_option(opt):
+    """Normalise spacing and outer $ signs so near-identical algebraic forms get caught."""
+    s = re.sub(r'\s+', '', opt.strip().lower())
+    return s.strip('$')
+
+
 def clean_question(q):
-    """Validate one model question; shuffle options. Returns dict or None."""
+    """Validate one model question; strip scratchpad; shuffle options. Returns dict or None."""
     if not isinstance(q, dict):
         return None
     n = {str(k).lower(): v for k, v in q.items()}
     text = str(n.get("question") or "").strip()
     opts = n.get("options")
-    if len(text) < 25 or not isinstance(opts, list) or len(opts) != 4:
+
+    # Guard against short/empty questions or leaked chain-of-thought monologue
+    if len(text) < 25 or _COT_LEAK_RE.search(text):
+        return None
+
+    if not isinstance(opts, list) or len(opts) != 4:
         return None
     opts = [str(o).strip() for o in opts]
-    if any(not o for o in opts) or len({o.lower() for o in opts}) < 4:
+    if any(not o for o in opts) or len({_norm_option(o) for o in opts}) < 4:
         return None
+
     try:
         correct = int(n.get("correct"))
     except (TypeError, ValueError):
         return None
     if not 0 <= correct <= 3:
         return None
+
     mt = str(n.get("mistaketype") or "Concept").strip().capitalize()
     if mt not in ("Concept", "Formula", "Silly"):
         mt = "Concept"
+
     if not any(_GIVEAWAY.search(o) for o in opts):   # even answer-position spread
         order = list(range(4))
         random.shuffle(order)
         opts = [opts[i] for i in order]
         correct = order.index(correct)
+
+    # Note: 'scratchpad' is intentionally omitted so it never reaches the frontend UI
     return {"question": text, "options": opts, "correct": correct, "mistakeType": mt}
+
 
 def generate_test_batch(specs, api_key):
     """One Gemini call -> (list of valid questions, last_error). Retries once for missing ones."""
@@ -575,22 +634,21 @@ def generate_test_batch(specs, api_key):
         if need <= 0:
             break
         todo = specs[len(valid):] if valid else specs
-        lines = "\n".join(f"{i}. Subject: {s['subject']} | Topic: {s['topic']} | Required twist: {s['twist']}" for i, s in enumerate(todo, 1))
+        lines = "\n".join(
+            f"{i}. Subject: {s['subject']} | Topic: {s['topic']} | Required twist: {s['twist']}"
+            for i, s in enumerate(todo, 1)
+        )
         prompt = (
             f"Write exactly {len(todo)} questions, one for each line below, in this order.\n{lines}\n"
+            f"Use the 'scratchpad' field to verify all physics/chemistry/math before writing 'question'.\n"
             f"Return only the JSON object."
         )
         contents = [types.Content(role="user", parts=[types.Part.from_text(text=prompt)])]
-        # Uses FAST_MODELS (15 RPM each) so parallel batches don't hit 5 RPM rate limits
+        # Generous token budget so scratchpad + thinking never truncates questions/options
+        max_out = TEST_THINKING_BUDGET + 850 * len(todo) + 400
         text, err = generate_text(
-            contents,
-            TEST_SYSTEM,
-            api_key,
-            models=FAST_MODELS,
-            temperature=0.6,
-            max_tokens=TEST_THINKING_BUDGET + 450 * len(todo) + 300,
-            thinking_budget=TEST_THINKING_BUDGET,
-            json_mode=True
+            contents, TEST_SYSTEM, api_key, models=FAST_MODELS, temperature=0.55,
+            max_tokens=max_out, thinking_budget=TEST_THINKING_BUDGET, json_mode=True
         )
         data = parse_json_loose(text)
         qs = (data or {}).get("questions") or (data or {}).get("Questions") or []
@@ -601,6 +659,7 @@ def generate_test_batch(specs, api_key):
     valid = valid[:len(specs)]
     return valid, err
 
+
 def build_test(count, subject, hint, api_key):
     """-> (title, questions, last_error). Batches run in parallel."""
     specs = build_specs(count, subject, hint)
@@ -609,7 +668,7 @@ def build_test(count, subject, hint, api_key):
     questions, err = [], None
     for f in futures:
         try:
-            qs, e = f.result(timeout=40)
+            qs, e = f.result(timeout=45)
             questions.extend(qs)
             err = err or e
         except Exception as e:
@@ -624,6 +683,7 @@ def build_test(count, subject, hint, api_key):
         q["id"] = i
     return test_title(subject, hint, specs), unique, err
 
+
 # ======================================================================
 # Chat call
 # ======================================================================
@@ -635,6 +695,7 @@ DOUBT_RE = re.compile(
     r"\bph\b|mole|\bforce\b|current|voltage|field|probability|matrix|sin|cos|tan|log|=|\^|\\|∫|√|\d\s*[+\-*/×]\s*\d", re.I
 )
 
+
 def classify_chat_kind(prompt, has_file):
     if VISUAL_RE.search(prompt):
         return "visual"
@@ -643,6 +704,7 @@ def classify_chat_kind(prompt, has_file):
     if has_file or DOUBT_RE.search(prompt):
         return "doubt"
     return "chat"
+
 
 def build_model_history(history):
     """Last 12 entries; only the newest 4 keep the original test JSON (saves input tokens)."""
@@ -654,30 +716,27 @@ def build_model_history(history):
         out.append({"role": m["role"], "content": content})
     return out
 
+
 def ask_ai(prompt, message_history, api_key, file_bytes=None, mime_type=None, kind="chat"):
     formatted_contents = []
     for msg in message_history:
         role = "model" if msg["role"] in ["assistant", "model"] else "user"
         formatted_contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg["content"])]))
+
     current_parts = []
     if file_bytes and mime_type:
         current_parts.append(types.Part.from_bytes(data=file_bytes, mime_type=mime_type))
     current_parts.append(types.Part.from_text(text=prompt))
     formatted_contents.append(types.Content(role="user", parts=current_parts))
-    
+
     think, visible = THINKING[kind]
     # Route heavy derivations, SVGs, and uploaded files to REASONING_MODELS; keep chat/hints on FAST_MODELS
     selected_models = REASONING_MODELS if (kind in ("solution", "visual") or bool(file_bytes)) else FAST_MODELS
-    
     return generate_text(
-        formatted_contents,
-        SYSTEM_INSTRUCTIONS,
-        api_key,
-        models=selected_models,
-        temperature=0.7 if kind == "chat" else 0.3,
-        max_tokens=think + visible,
-        thinking_budget=think
+        formatted_contents, SYSTEM_INSTRUCTIONS, api_key, models=selected_models,
+        temperature=0.7 if kind == "chat" else 0.3, max_tokens=think + visible, thinking_budget=think
     )
+
 
 # ======================================================================
 # Discord (all calls run in the background so replies are never delayed)
@@ -687,6 +746,7 @@ def _post_webhook(url, payload):
         requests.post(url, json=payload, timeout=6)
     except Exception as e:
         print(f"[Discord ERROR]: {e}")
+
 
 def send_log_to_discord(name, user_goal, current_pct, user_asked, ai_answered):
     # Set DISCORD_WEBHOOK_URL in your environment (never paste the URL in code).
@@ -704,6 +764,7 @@ def send_log_to_discord(name, user_goal, current_pct, user_asked, ai_answered):
     )[:1900]
     run_bg(_post_webhook, webhook_url, {"content": content, "allowed_mentions": {"parse": []}})
 
+
 FEEDBACK_LABELS = {
     "bug": ("🐞 Bug", 0xFF453A),
     "wrong_answer": ("❌ Wrong answer", 0xFF9F0A),
@@ -712,6 +773,7 @@ FEEDBACK_LABELS = {
 }
 _feedback_usage = {}   # {(visitor, hour_bucket): count}
 FEEDBACK_PER_HOUR = 10
+
 
 def send_feedback_to_discord(fb):
     # Optional separate channel: DISCORD_FEEDBACK_WEBHOOK_URL (falls back to the log webhook).
@@ -740,6 +802,7 @@ def send_feedback_to_discord(fb):
     }
     run_bg(_post_webhook, url, payload)
 
+
 # ======================================================================
 # Routes
 # ======================================================================
@@ -750,9 +813,11 @@ def home():
         resp.set_cookie("nino_vid", os.urandom(12).hex(), max_age=60 * 60 * 24 * 365, samesite="Lax", secure=True, httponly=True)
     return resp
 
+
 @app.route('/api/health', methods=['GET'])
 def health():
     return jsonify({"status": "ok"}), 200
+
 
 @app.route('/api/feedback', methods=['POST'])
 def feedback():
@@ -768,6 +833,7 @@ def feedback():
     if _feedback_usage.get(bucket, 0) >= FEEDBACK_PER_HOUR:
         return jsonify({"status": "error", "error": "Too many feedback messages, try later"}), 429
     _feedback_usage[bucket] = _feedback_usage.get(bucket, 0) + 1
+
     category = body.get('category')
     fb = {
         "category": category if category in FEEDBACK_LABELS else "other",
@@ -787,11 +853,13 @@ def feedback():
     send_feedback_to_discord(fb)
     return jsonify({"status": "ok"}), 200
 
+
 @app.route('/api/profile', methods=['GET'])
 def get_profile():
     name = request.args.get('name', 'Anonymous')
     session = session_store.get_or_create(name, "General Study Optimization")
     return jsonify({"name": name, "goal": session["goal"], "progress": session["pct"]})
+
 
 @app.route('/api/settings', methods=['GET', 'POST'])
 def handle_settings():
@@ -809,6 +877,7 @@ def handle_settings():
     session = session_store.get_or_create(name, "General Study Optimization")
     return jsonify({"settings": session.get('settings', {"mode": "adaptive", "theme": "dark"})})
 
+
 @app.route('/api/chat/<chat_id>', methods=['GET'])
 def get_chat_history(chat_id):
     session = session_store._sessions.get(chat_id, {})
@@ -818,10 +887,12 @@ def get_chat_history(chat_id):
         "pct": session.get("pct", 10)
     })
 
+
 @app.route('/api/chat/<chat_id>', methods=['DELETE'], endpoint='delete_chat')
 def delete_chat(chat_id):
     deleted = session_store.delete_session(chat_id)
     return jsonify({"status": "deleted" if deleted else "not_found"}), 200
+
 
 @app.route('/run_sandbox', methods=['POST'])
 def run_sandbox():
@@ -851,6 +922,7 @@ def run_sandbox():
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
+
 
 @app.route('/guide', methods=['POST'])
 def guide():
@@ -888,6 +960,7 @@ def guide():
                 "testTitle": "",
                 "questions": []
             }), 429
+
         updated_pct = current_state["pct"]
 
         # ---------- T) Practice test: dedicated prompt, parallel batches ----------
@@ -900,9 +973,7 @@ def guide():
                 return jsonify({"response": msg, "progress": updated_pct, "isTestTrigger": False, "testTitle": "", "questions": []})
             friendly = f"Here's your {title} set. These are built to be tough, so think before you tap."
             session_store.append_history(
-                name,
-                user_prompt,
-                friendly,
+                name, user_prompt, friendly,
                 test={"title": title, "questions": questions},
                 model_text=json.dumps({"chatResponse": friendly, "testTitle": title, "questions": questions}, ensure_ascii=False)
             )
@@ -935,15 +1006,14 @@ def guide():
             clean_response = clean_response.replace("[PROGRESS_UP]", "").strip()
 
         envelope = parse_ai_json(clean_response)
+
         # A) JSON envelope (safety net if the chat model still emits a test)
         if envelope is not None:
             info = unpack_envelope(envelope)
             has_test = len(info["questions"]) > 0
             friendly = info["chat_text"] or (f"Here is your {info['title']} test." if has_test else clean_response)
             session_store.append_history(
-                name,
-                user_prompt,
-                friendly,
+                name, user_prompt, friendly,
                 test={"title": info["title"], "questions": info["questions"]} if has_test else None,
                 model_text=json.dumps(envelope, ensure_ascii=False),
             )
@@ -967,9 +1037,11 @@ def guide():
         session_store.append_history(name, user_prompt, clean_response)
         send_log_to_discord(name, current_state["goal"], updated_pct, user_prompt, clean_response)
         return jsonify({"response": clean_response, "progress": updated_pct, "isTestTrigger": False, "testTitle": "", "questions": []})
+
     except Exception as e:
         print(f"[/guide ERROR]: {e}")
         return jsonify({"response": "Nino hit an unexpected error. Please try again."}), 500
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
