@@ -1,8 +1,8 @@
 import json
+import math
 import os
 import random
 import re
-import math
 import subprocess
 import tempfile
 import threading
@@ -16,7 +16,7 @@ from google import genai
 from google.genai import types
 
 app = Flask(__name__, template_folder="templates")
-application = app  # Explicit alias for WSGI servers (AWS Elastic Beanstalk, etc.)
+application = app  # Explicit alias for WSGI servers (Vercel, Gunicorn, etc.)
 
 # ======================================================================
 # TUNING KNOBS (speed vs. quality). Change these, not the code.
@@ -42,6 +42,13 @@ THINKING = {
     "solution": (1024, 2200),
     "visual": (768, 3000),
 }
+
+# ---------------- Writable path helper (Vercel /tmp safe) ----------------
+def _writable_path(filename):
+    if os.environ.get("VERCEL") or os.path.isdir("/tmp"):
+        return os.path.join("/tmp", filename)
+    return filename
+
 
 # ---------------- File validation ----------------
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "pdf"}
@@ -95,21 +102,26 @@ CUTOFF_MESSAGE = (
 # ======================================================================
 # Rendering & LaTeX Leak Sanitizer
 # ======================================================================
-_DOUBLE_SLASH_RE = re.compile(r"\\\\(?=[a-zA-Z]+\vert{}[^a-zA-Z0-9\s])") _NAKED_LATEX_CMD_RE = re.compile( r"(?<!\$)(?<!\\)\\(?:frac|sqrt|theta|alpha|beta|gamma|delta|rightleftharpoons|"
+_DOUBLE_SLASH_RE = re.compile(r"\\\\(?=[a-zA-Z]+\vert{}[^a-zA-Z0-9\s])") _MATH_SPAN_RE = re.compile(r"(\$\$[\s\S]*?\$\$\vert{}\$[^$\n]+?\$)") _NAKED_LATEX_CMD_RE = re.compile( r"(?<!\\)\\(?:frac|sqrt|theta|alpha|beta|gamma|delta|rightleftharpoons|"
     r"rightarrow|leftarrow|text|mathrm|mathbf|cdot|times|div|pm|mp|leq|geq|neq|"
-    r"approx|sum|int|log|ln|sin|cos|tan)\b(?![^{}]*\})"
+    r"approx|sum|int|log|ln|sin|cos|tan)\b"
 )
+
+
+def _sanitize_non_math_segment(seg):
+    cleaned = _DOUBLE_SLASH_RE.sub(r"\\", seg)
+    cleaned = _NAKED_LATEX_CMD_RE.sub(lambda m: f"${m.group(0)}$", cleaned)
+    return cleaned
 
 
 def normalize_latex_string(text):
     """
-    Fixes over-escaped or leaked LaTeX sequences after JSON decoding so
-    frontend math renderers (KaTeX / MathJax) receive clean single-backslash LaTeX.
+    Fixes over-escaped or leaked LaTeX sequences while preserving existing
+    $...$ / $$...$$ math blocks and <svg>...</svg> diagrams.
     """
     if not isinstance(text, str) or not text:
         return text or ""
 
-    # Preserve raw <svg>...</svg> blocks untouched
     if "<svg" in text.lower() and "</svg>" in text.lower():
         parts = re.split(r"(<svg\b.*?</svg>)", text, flags=re.DOTALL | re.IGNORECASE)
         return "".join(
@@ -117,14 +129,18 @@ def normalize_latex_string(text):
             for part in parts
         )
 
-    # Collapse doubled backslashes inside JSON-decoded strings into single backslashes
-    cleaned = _DOUBLE_SLASH_RE.sub(r"\\", text)
-
-    # Wrap standalone un-delimited LaTeX commands in inline $...$ if needed
-    def _wrap_cmd(match):
-        token = match.group(0)
-        return f"${token}$"      cleaned = _NAKED_LATEX_CMD_RE.sub(_wrap_cmd, cleaned)      # Collapse accidental double-dollar empty/broken pairs like $$  $$ cleaned = re.sub(r"\$\s*\$\$", "$$", cleaned)
-    return cleaned.strip()
+    tokens = _MATH_SPAN_RE.split(text)
+    out = []
+    for tok in tokens:
+        if not tok:
+            continue
+        if tok.startswith("$$") and tok.endswith("$$"):
+            inner = _DOUBLE_SLASH_RE.sub(r"\\", tok[2:-2]).strip()
+            out.append(f"$${inner}$$")
+        elif tok.startswith("$") and tok.endswith("$"):
+            inner = _DOUBLE_SLASH_RE.sub(r"\\", tok[1:-1]).strip()
+            out.append(f"${inner}$") else: out.append(_sanitize_non_math_segment(tok))      result = "".join(out) result = re.sub(r"\$\s*\$\$", "$$", result)
+    return result.strip()
 
 
 def looks_like_test_json(text):
@@ -190,8 +206,8 @@ def unpack_envelope(envelope):
 
 # ---------------- Session storage ----------------
 class SessionManager:
-    def __init__(self, filepath="local_memory.json"):
-        self.filepath = filepath
+    def __init__(self, filepath=None):
+        self.filepath = filepath or _writable_path("local_memory.json")
         self._lock = threading.Lock()
         self._sessions = self._load_memory()
 
@@ -199,7 +215,9 @@ class SessionManager:
         if os.path.exists(self.filepath):
             try:
                 with open(self.filepath, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        return data
             except Exception as e:
                 print(f"[SessionManager ERROR - Load]: {e}")
         return {}
@@ -242,8 +260,10 @@ class SessionManager:
     def migrate_legacy_history(self):
         changed = False
         for session in self._sessions.values():
+            if not isinstance(session, dict):
+                continue
             for msg in session.get("history", []):
-                if msg.get("role") not in ("model", "assistant"):
+                if not isinstance(msg, dict) or msg.get("role") not in ("model", "assistant"):
                     continue
                 if "test" in msg or "model_text" in msg:
                     continue
@@ -590,7 +610,7 @@ def test_title(subject, hint, specs):
     return "Mixed PCM Challenge"
 
 
-_BACKSLASH = re.compile(r"\\\\|\\(?! [\"/]|u[0-9a-fA-F]{4})")
+_BACKSLASH = re.compile(r"\\\\|\\(?!["/]|u[0-9a-fA-F]{4})")
 
 
 def fix_latex_backslashes(raw):
@@ -910,7 +930,7 @@ def feedback():
         "time": datetime.now(timezone.utc).isoformat(),
     }
     try:
-        with open("feedback_log.jsonl", "a", encoding="utf-8") as f:
+        with open(_writable_path("feedback_log.jsonl"), "a", encoding="utf-8") as f:
             f.write(json.dumps(fb, ensure_ascii=False) + "\n")
     except Exception as e:
         print(f"[feedback log ERROR]: {e}")
