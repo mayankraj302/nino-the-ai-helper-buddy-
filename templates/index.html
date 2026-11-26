@@ -678,7 +678,29 @@ async function send(){
   try{
     const fd=new FormData();fd.append("name",currentChatId);fd.append("interest",text||"General Study Optimization");fd.append("followup",text);if(file)fd.append("file",file);
     const headers={},uk=localStorage.getItem(USER_KEY_STORAGE);if(uk)headers['X-User-Key']=uk;
-    const res=await fetch("/guide",{method:"POST",body:fd,headers,signal:(AbortSignal.timeout?AbortSignal.timeout(120000):undefined)}),data=await res.json();$(tId)?.remove();
+    const res=await fetch("/guide",{method:"POST",body:fd,headers,signal:(AbortSignal.timeout?AbortSignal.timeout(120000):undefined)});
+    if((res.headers.get('content-type')||'').includes('text/event-stream')){
+      /* Chat/doubt/solution/visual replies arrive as a Server-Sent Events stream */
+      const reader=res.body.getReader(),dec=new TextDecoder(),box=t.querySelector('.ai-text');let buf='',full='',err=null;
+      while(true){
+        const {done,value}=await reader.read();if(done)break;
+        buf+=dec.decode(value,{stream:true});
+        let i;
+        while((i=buf.indexOf('\n\n'))>=0){
+          const block=buf.slice(0,i);buf=buf.slice(i+2);
+          for(const line of block.split('\n')){
+            if(!line.startsWith('data:'))continue;
+            let ev;try{ev=JSON.parse(line.slice(5).trim())}catch{continue}
+            if(ev.token){full+=ev.token;box.classList.add('rich');box.innerHTML=marked.parse(renderMathFormulas(full));chat.scrollTop=chat.scrollHeight}
+            if(ev.error)err=ev.error;
+          }
+        }
+      }
+      $(tId)?.remove();
+      addMessage(full||err||"Nino couldn't answer that just now. Try sending it again.","ai");
+      return;
+    }
+    const data=await res.json();$(tId)?.remove();
     const trig=data.isTestTrigger||data.IsTestTrigger||data.istesttrigger,qs=data.questions||data.Questions,title=data.testTitle||data.TestTitle||text;
     if(trig&&qs&&qs.length){
       addMessage(data.chatResponse||data.ChatResponse||"I've opened your practice test.","ai",false,null,{title,questions:qs});
