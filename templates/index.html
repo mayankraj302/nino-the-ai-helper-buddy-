@@ -315,10 +315,11 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
 .fade-b{bottom:var(--ch,120px);height:46px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);-webkit-mask-image:linear-gradient(transparent,#000 60%);mask-image:linear-gradient(transparent,#000 60%)}
 .home .fade{display:none}
 
-/* ---- v6.1: Stop generating button while streaming ---- */
-.gw.busy #send-btn{opacity:1;pointer-events:auto;filter:none;background:var(--red);box-shadow:0 4px 16px rgba(255,69,58,.35)}
+/* ---- v6.1: one message at a time ---- */
+.gw.busy #send-btn{opacity:.6;filter:none}
 .gw.busy #send-btn svg{display:none}
-.gw.busy #send-btn:after{content:'';width:14px;height:14px;border-radius:3px;background:#fff}
+.gw.busy #send-btn:after{content:'';width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;animation:rot .8s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
 .gw.nudge{animation:nudge .38s var(--ease)}
 @keyframes nudge{20%{transform:translateX(-6px)}45%{transform:translateX(5px)}70%{transform:translateX(-3px)}}
 </style>
@@ -350,7 +351,7 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
 
       <div class="fade fade-t"></div><div class="fade fade-b"></div>
       <div id="welcome">
-        <span class="who glass"><i></i>For JEE Main & Advanced aspirants</span>
+        <span class="who glass"><i></i>For JEE Main &amp; Advanced aspirants</span>
         <h1 class="w-title"><span class="ln"><span style="--d:.2s">Your JEE doubts,</span></span><span class="ln"><span style="--d:.34s"><em>solved step by step.</em></span></span></h1>
         <p class="sub">Ask in text or snap a photo. Nino explains Physics, Chemistry and Maths, then tests what you learned.</p>
         <div class="acts">
@@ -377,7 +378,7 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
             <input type="file" id="file-uploader" accept=".png,.jpg,.jpeg,.webp,.pdf" class="hidden" onchange="handleFileSelection()">
             <button class="plus-btn" onclick="triggerFilePicker()" aria-label="Attach file"><svg class="icon" data-icon="plus"></svg></button>
             <textarea id="user-input" rows="1" placeholder="Ask Nino anything…"></textarea>
-            <button id="send-btn" class="off" onclick="send(true)" aria-label="Send"><span class="lbl">Send</span><svg class="icon" data-icon="arrowup"></svg></button>
+            <button id="send-btn" class="off" onclick="send()" aria-label="Send"><span class="lbl">Send</span><svg class="icon" data-icon="arrowup"></svg></button>
           </div>
         </div>
         <p class="hint">Nino can make mistakes. Check important info.</p>
@@ -425,6 +426,7 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
 <script>
 const LOGO='<svg viewBox="0 0 40 40" aria-hidden="true"><use href="#nino-logo"/></svg>';
 
+
 const ICONS={chev:'<path d="M9 5.500l6.500 6.500L9 18.500" stroke="currentColor" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',flame:'<path d="M12 2.500c.5 3-1.500 4.500-3 6.500-1.300 1.800-2 3.200-2 5.200a5 5 0 0010 0c0-2-.8-3.300-1.800-4.600.1 1.300-.5 2.200-1.400 2.600.6-3.300-.8-6.800-1.800-9.700z" fill="currentColor"/>',camera:'<path d="M4 8.500a2 2 0 012-2h1.800l1.200-2h6l1.200 2H18a2 2 0 012 2V17a2 2 0 01-2 2H6a2 2 0 01-2-2z" fill="none" stroke="currentColor" stroke-width="1.900" stroke-linejoin="round"/><circle cx="12" cy="12.800" r="3.200" fill="none" stroke="currentColor" stroke-width="1.900"/>',atom:'<circle cx="12" cy="12" r="1.800" fill="currentColor"/><ellipse cx="12" cy="12" rx="9" ry="3.800" fill="none" stroke="currentColor" stroke-width="1.700"/><ellipse cx="12" cy="12" rx="9" ry="3.800" transform="rotate(60 12 12)" fill="none" stroke="currentColor" stroke-width="1.700"/><ellipse cx="12" cy="12" rx="9" ry="3.800" transform="rotate(120 12 12)" fill="none" stroke="currentColor" stroke-width="1.700"/>',bolt:'<path d="M13 2.500L5 13.500h6l-1 8 8-11h-6z" fill="currentColor"/>',flask:'<path d="M9.500 3.500h5M10.500 3.500v6L5 19a1.500 1.500 0 001.300 2h11.400a1.500 1.500 0 001.300-2l-5.500-9.500v-6" fill="none" stroke="currentColor" stroke-width="1.900" stroke-linecap="round" stroke-linejoin="round"/>',sigma:'<path d="M18 5.500H6.500L12.500 12 6.500 18.500H18" stroke="currentColor" stroke-width="2.400" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
 xmark:'<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/>',
 compose:'<path d="M12 5H6.500A2.500 2.500 0 004 7.500v10A2.500 2.500 0 006.500 20h10a2.500 2.500 0 002.500-2.500V12" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"/><path d="M17.500 3.500a1.800 1.800 0 012.600 2.600L12 14.200l-3.400.8.800-3.400z" fill="currentColor"/>',
@@ -444,22 +446,13 @@ bulb:'<path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.500 10.900c.6.5 1 1.200 1 2V16h5v
 const icon=n=>`<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||''}</svg>`;
 document.querySelectorAll('svg[data-icon]').forEach(el=>{el.setAttribute('viewBox','0 0 24 24');el.innerHTML=ICONS[el.dataset.icon]||'';el.removeAttribute('data-icon')});
 
-let selectedFileObject=null,examinationActive=false,isReviewMode=false,verificationQuestions=[],currentTopicContext="General Practice",examCountdownInterval=null,timeRemainingSeconds=0,currentChatId=null,chatSessions=[],currentMessages=[];
-let activeStreamController=null,stopCurrentStream=null;
-const USER_KEY_STORAGE='nino_user_key',MSG_CACHE_PREFIX='nino_msgs_',$=id=>document.getElementById(id);
+let selectedFileObject=null,examinationActive=false,isReviewMode=false,verificationQuestions=[],currentTopicContext="General Practice",examCountdownInterval=null,timeRemainingSeconds=0,currentChatId=null,chatSessions=[];
+const USER_KEY_STORAGE='nino_user_key',$=id=>document.getElementById(id);
 const chat=$('chat-window'),input=$('user-input'),sendBtn=$('send-btn'),sidebar=$('sidebar'),backdrop=$('backdrop'),glow=$('glow'),fileUploader=$('file-uploader'),filePreview=$('file-preview'),historyEl=$('history'),splitContainer=$('split'),slider=$('slider'),testSection=$('test-section'),configurator=$('configurator'),viewport=$('test-viewport');
 const isMobile=()=>window.innerWidth<768;
-const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&','<':'<','>':'>','"':'"',"'":'''}[c]));
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 marked.setOptions({breaks:true});
 $('nav-gap').style.display='none';
-
-function saveLocalMessages(){
-  if(!currentChatId)return;
-  try{localStorage.setItem(MSG_CACHE_PREFIX+currentChatId,JSON.stringify(currentMessages.slice(-40)))}catch{}
-}
-function loadLocalMessages(id){
-  try{return JSON.parse(localStorage.getItem(MSG_CACHE_PREFIX+id)||'[]')}catch{return[]}
-}
 
 function renderMathFormulas(t){
   if(typeof katex==='undefined')return t;
@@ -487,31 +480,22 @@ function renderSidebarList(){
 async function deleteChat(id,ev){
   ev.stopPropagation();if(!confirm("Delete this chat?"))return;
   chatSessions=chatSessions.filter(c=>c.id!==id);localStorage.setItem('helper_buddy_chats',JSON.stringify(chatSessions));
-  localStorage.removeItem(MSG_CACHE_PREFIX+id);
   try{await fetch(`/api/chat/${id}`,{method:'DELETE'})}catch{}
   if(currentChatId===id)chatSessions.length?switchChat(chatSessions[0].id):startNewChat();else renderSidebarList();
 }
 function showWelcome(s){$('welcome').classList.toggle('hidden',!s);chat.classList.toggle('hidden',s)}
 async function switchChat(id){
-  if(stopCurrentStream)stopCurrentStream();
   if(id!==currentChatId){closeTestingInterface();verificationQuestions=[]}
   currentChatId=id;chat.innerHTML="";renderSidebarList();
   if(isMobile()&&sidebar.classList.contains('open'))toggleMenu();
-  let msgs=loadLocalMessages(id);
   try{
-    const r=await fetch(`/api/chat/${id}`);
-    if(r.ok){const d=await r.json();if(Array.isArray(d.history)&&d.history.length>=msgs.length)msgs=d.history}
-  }catch{}
-  currentMessages=msgs;
-  if(msgs&&msgs.length){
-    showWelcome(false);
-    msgs.forEach(m=>addMessage(m.content,(m.role==='model'||m.role==='assistant'||m.role==='ai')?'ai':'user',true,null,m.test));
-    setTimeout(()=>{chat.scrollTop=chat.scrollHeight},50);
-  }else showWelcome(true);
+    const r=await fetch(`/api/chat/${id}`);if(!r.ok)throw 0;const d=await r.json();
+    if(d.history&&d.history.length){showWelcome(false);d.history.forEach(m=>addMessage(m.content,(m.role==='model'||m.role==='assistant')?'ai':'user',true,null,m.test));setTimeout(()=>{chat.scrollTop=chat.scrollHeight},50)}
+    else showWelcome(true);
+  }catch{showWelcome(true)}
 }
 function startNewChat(){
-  if(stopCurrentStream)stopCurrentStream();
-  currentChatId='chat_'+Date.now();currentMessages=[];chat.innerHTML="";showWelcome(true);clearSelectedFile();closeTestingInterface();verificationQuestions=[];
+  currentChatId='chat_'+Date.now();chat.innerHTML="";showWelcome(true);clearSelectedFile();closeTestingInterface();verificationQuestions=[];
   if(sidebar.classList.contains('open'))toggleMenu();renderSidebarList();
 }
 const openModal=id=>requestAnimationFrame(()=>$(id).classList.add('show')),closeModal=id=>$(id).classList.remove('show');
@@ -550,11 +534,7 @@ function setFile(f){
 }
 function handleFileSelection(){if(fileUploader.files&&fileUploader.files[0])setFile(fileUploader.files[0])}
 function clearSelectedFile(){selectedFileObject=null;fileUploader.value="";filePreview.classList.add('hidden');updateSendState()}
-function updateSendState(){
-  const isBusy=glow.classList.contains('busy');
-  sendBtn.classList.toggle('off',!isBusy&&!input.value.trim()&&!selectedFileObject);
-  sendBtn.setAttribute('aria-label',isBusy?'Stop generating':'Send');
-}
+function updateSendState(){sendBtn.classList.toggle('off',(!input.value.trim()&&!selectedFileObject)||glow.classList.contains('busy'))}
 function autoGrow(){input.style.height='auto';input.style.height=Math.min(input.scrollHeight,140)+'px'}
 function editMessage(b){input.value=decodeURIComponent(b.getAttribute('data-raw'));autoGrow();updateSendState();input.focus()}
 
@@ -572,20 +552,6 @@ function reopenTest(id){
   const p=testStash[id];if(!p||!p.questions)return;
   verificationQuestions=p.questions.map(q=>({...q,selectedAnswer:null,mistakeType:normMistake(q.mistakeType)}));openTestingInterface(p.title||"Practice test");
 }
-function renderRichAI(text,streaming=false){
-  let t=String(text||'').replace(/```(?:xml|html|svg)?\s*(<svg[\s\S]*?<\/svg>)\s*```/gi,'$1');
-  if(streaming){
-    t=t.replace(/<svg(?![\s\S]*<\/svg>)[\s\S]*$/i,'\n\n*Drawing diagram…*');
-  }
-  const svgs=[];
-  t=t.replace(/<svg[\s\S]*?<\/svg>/gi,m=>{svgs.push(m);return `%%%SVG_${svgs.length-1}%%%`});
-  let h=marked.parse(renderMathFormulas(t));
-  svgs.forEach((s,i)=>{
-    const safe=s.replace(/stroke="black"/gi,'stroke="currentColor"').replace(/fill="black"/gi,'fill="currentColor"');
-    h=h.replace(new RegExp(`<p>%%%SVG_${i}%%%</p>|%%%SVG_${i}%%%`,'g'),`<div class="svg-card">${safe}</div>`);
-  });
-  return h;
-}
 function addMessage(text,sender,hist=false,imageUrl=null,testObj=null){
   const w=document.createElement('div');w.className=`msg ${sender}`;text=text==null?'':String(text);
   const payload=sender==='ai'?((testObj&&Array.isArray(testObj.questions)&&testObj.questions.length)?{count:testObj.questions.length,questions:testObj.questions,message:text,title:testObj.title||''}:extractTestPayload(text)):null;
@@ -594,19 +560,18 @@ function addMessage(text,sender,hist=false,imageUrl=null,testObj=null){
     const m=payload.message?marked.parse(renderMathFormulas(payload.message)):'<p>I prepared a practice test for you.</p>';
     w.innerHTML=`<span class="mark">${LOGO}</span><div class="ai-text rich">${m}<div class="q-card" style="display:flex;align-items:center;gap:12px;margin:12px 0 0;max-width:420px;padding:12px 14px;animation:none"><span class="mark" style="width:40px;height:40px;border-radius:12px;box-shadow:none;font-size:19px">${icon('list')}</span><div style="flex:1;min-width:0"><b style="display:block;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(payload.title||'Practice test')}</b><small style="color:var(--mu)">${payload.count} question${payload.count===1?'':'s'}</small></div>${payload.questions?`<button class="btn sm red" onclick="reopenTest('${id}')">Open test</button>`:''}</div></div>`;
   }else if(sender==='ai'){
-    w.innerHTML=`<span class="mark">${LOGO}</span><div class="ai-text rich">${renderRichAI(text,false)}</div>`;
+    let t=text.replace(/```(?:xml|html|svg)?\s*(<svg[\s\S]*?<\/svg>)\s*```/gi,'$1');const svgs=[];
+    t=t.replace(/<svg[\s\S]*?<\/svg>/gi,m=>{svgs.push(m);return `%%%SVG_${svgs.length-1}%%%`});
+    let h=marked.parse(renderMathFormulas(t));
+    svgs.forEach((s,i)=>{const safe=s.replace(/stroke="black"/gi,'stroke="currentColor"').replace(/fill="black"/gi,'fill="currentColor"');h=h.replace(new RegExp(`<p>%%%SVG_${i}%%%</p>|%%%SVG_${i}%%%`,'g'),`<div class="svg-card">${safe}</div>`)});
+    w.innerHTML=`<span class="mark">${LOGO}</span><div class="ai-text rich">${h}</div>`;
   }else{
     let h=imageUrl?`<img src="${imageUrl}" alt="Attachment" style="max-width:100%;border-radius:12px;display:block;${text?'margin-bottom:8px':''}">`:'';
     h+=esc(text).replace(/\n/g,'<br>');
     const e=text?`<button class="edit-btn" data-raw="${encodeURIComponent(text)}" onclick="editMessage(this)" aria-label="Edit message">${icon('pencil')}</button>`:'';
     w.innerHTML=`<div class="bubble">${h}${e}</div>`;
   }
-  chat.appendChild(w);
-  if(!hist){
-    currentMessages.push({role:sender==='user'?'user':'model',content:text,test:testObj||undefined});
-    saveLocalMessages();
-    afterAdd(w,sender);
-  }
+  chat.appendChild(w);if(!hist)afterAdd(w,sender);
 }
 
 function initializeDraggableResizer(){
@@ -666,12 +631,7 @@ function startTestingClock(){
 function requestRealtimeDoubtSupport(id){
   if(isMobile()){testSection.classList.remove('shown');showMobileReturnButton()}else setSplitView(50);
   const q=verificationQuestions.find(x=>x.id===id);
-  if(q){
-    const opts=(q.options||[]).map((o,i)=>`${String.fromCharCode(65+i)}) ${o}`).join('\n');
-    input.value=`I need the complete step-by-step solution for Question ${id}:\n\n"${q.question}"\n\nOptions:\n${opts}`;
-    autoGrow();updateSendState();
-    setTimeout(()=>{chat.scrollTop=chat.scrollHeight;input.focus({preventScroll:true})},isMobile()?600:0);
-  }
+  if(q){input.value=`I need help with Question ${id}:\n\n"${q.question}"\n\nCan you explain this visually, step by step?`;autoGrow();updateSendState();setTimeout(()=>{chat.scrollTop=chat.scrollHeight;input.focus({preventScroll:true})},isMobile()?600:0)}
 }
 function showMobileReturnButton(){
   if($('return-btn'))return;const b=document.createElement('button');b.id='return-btn';b.className='btn red';
@@ -702,19 +662,10 @@ const TESTS=[
 {s:'Maths',n:'Algebra',c:'#5b8cff',p:'Generate a mock test for Maths Algebra'}];
 TESTS.forEach(t=>{const b=document.createElement('button');b.className='chip';b.setAttribute('role','listitem');b.innerHTML=`<i style="background:${t.c}"></i>${t.n}<small>${t.s}</small>`;b.onclick=()=>useSuggestion(t.p);$('chips').appendChild(b)});
 
-async function send(fromBtn=false){
-  if(glow.classList.contains('busy')){
-    if(fromBtn){
-      if(stopCurrentStream)stopCurrentStream();
-      else if(activeStreamController)activeStreamController.abort();
-    }else{
-      glow.classList.remove('nudge');void glow.offsetWidth;glow.classList.add('nudge');
-    }
-    return;
-  }
+async function send(){
+  if(glow.classList.contains('busy')){glow.classList.remove('nudge');void glow.offsetWidth;glow.classList.add('nudge');return}
   const text=input.value.trim();if(!text&&!selectedFileObject)return;
   const file=selectedFileObject;input.value="";input.style.height="auto";showWelcome(false);
-  const historyForServer=currentMessages.slice(-10).map(m=>({role:m.role,content:m.content}));
   const imgUrl=file&&file.type&&file.type.startsWith('image/')?URL.createObjectURL(file):null;
   addMessage(text,"user",false,imgUrl);clearSelectedFile();
   if(!chatSessions.find(c=>c.id===currentChatId)){
@@ -724,133 +675,19 @@ async function send(fromBtn=false){
   const tId="think-"+Date.now(),t=document.createElement('div');t.id=tId;t.className='msg ai';
   t.innerHTML=`<span class="mark">${LOGO}</span><div class="ai-text"><div class="thinking"><i></i>Nino is thinking…</div></div>`;
   chat.appendChild(t);scrollEnd();glow.classList.add('busy');updateSendState();
-
-  activeStreamController=new AbortController();
-  let drainTimer=null,aiBody=null,displayed="",savedStreamReply=false;
-
-  stopCurrentStream=()=>{
-    if(drainTimer){clearInterval(drainTimer);drainTimer=null}
-    if(activeStreamController)activeStreamController.abort();
-    if(aiBody&&displayed.trim()){
-      aiBody.innerHTML=renderRichAI(displayed,false);
-      if(!savedStreamReply){
-        savedStreamReply=true;
-        currentMessages.push({role:'model',content:displayed});
-        saveLocalMessages();
-      }
-    }else{
-      $(tId)?.remove();
-    }
-  };
-
   try{
-    const fd=new FormData();
-    fd.append("name",currentChatId);
-    fd.append("interest",text||"General Study Optimization");
-    fd.append("followup",text);
-    fd.append("history",JSON.stringify(historyForServer));
-    if(file)fd.append("file",file);
-    const headers={},uk=localStorage.getItem(USER_KEY_STORAGE);
-    if(uk)headers['X-User-Key']=uk;
-
-    const res=await fetch("/guide",{method:"POST",body:fd,headers,signal:activeStreamController.signal});
-    const contentType=res.headers.get("content-type")||"";
-
-    // Path 1: Streaming word-by-word response (SSE)
-    if(contentType.includes("text/event-stream")&&res.body){
-      const reader=res.body.getReader();
-      const decoder=new TextDecoder();
-      let sseBuffer="",wordQueue=[],fullText="",streamDone=false;
-
-      const nearBottom=()=>(chat.scrollHeight-chat.scrollTop-chat.clientHeight)<140;
-      const ensureBubble=()=>{
-        if(aiBody)return;
-        const wrap=$(tId);
-        if(wrap){
-          aiBody=wrap.querySelector('.ai-text');
-          aiBody.classList.add('rich');
-          aiBody.innerHTML="";
-        }
-      };
-
-      const startDrain=()=>{
-        if(drainTimer)return;
-        drainTimer=setInterval(()=>{
-          if(!wordQueue.length){
-            if(streamDone){
-              clearInterval(drainTimer);drainTimer=null;
-              if(aiBody)aiBody.innerHTML=renderRichAI(fullText,false);
-            }
-            return;
-          }
-          const step=wordQueue.length>60?6:wordQueue.length>25?3:1;
-          for(let i=0;i<step&&wordQueue.length;i++)displayed+=wordQueue.shift();
-          const stick=nearBottom();
-          ensureBubble();
-          if(aiBody)aiBody.innerHTML=renderRichAI(displayed,!streamDone);
-          if(stick)chat.scrollTop=chat.scrollHeight;
-        },22);
-      };
-
-      while(true){
-        const{value,done}=await reader.read();
-        if(done)break;
-        sseBuffer+=decoder.decode(value,{stream:true});
-        const events=sseBuffer.split("\n\n");
-        sseBuffer=events.pop()||"";
-        for(const ev of events){
-          const line=ev.trim();
-          if(!line.startsWith("data:"))continue;
-          let msg;
-          try{msg=JSON.parse(line.slice(5).trim())}catch{continue}
-          if(msg.error){
-            $(tId)?.remove();
-            addMessage(msg.error,"ai");
-            streamDone=true;
-            return;
-          }
-          if(msg.token){
-            fullText+=msg.token;
-            const pieces=msg.token.split(/(\s+)/).filter(Boolean);
-            wordQueue.push(...pieces);
-            startDrain();
-          }
-          if(msg.done)streamDone=true;
-        }
-      }
-
-      streamDone=true;
-      await new Promise(resolve=>{
-        const check=setInterval(()=>{if(!drainTimer){clearInterval(check);resolve()}},30);
-      });
-      if(fullText.trim()&&!savedStreamReply){
-        savedStreamReply=true;
-        currentMessages.push({role:'model',content:fullText});
-        saveLocalMessages();
-      }
-      return;
-    }
-
-    // Path 2: Standard JSON response (practice tests & rate-limit errors)
-    const data=await res.json();$(tId)?.remove();
+    const fd=new FormData();fd.append("name",currentChatId);fd.append("interest",text||"General Study Optimization");fd.append("followup",text);if(file)fd.append("file",file);
+    const headers={},uk=localStorage.getItem(USER_KEY_STORAGE);if(uk)headers['X-User-Key']=uk;
+    const res=await fetch("/guide",{method:"POST",body:fd,headers,signal:(AbortSignal.timeout?AbortSignal.timeout(120000):undefined)}),data=await res.json();$(tId)?.remove();
     const trig=data.isTestTrigger||data.IsTestTrigger||data.istesttrigger,qs=data.questions||data.Questions,title=data.testTitle||data.TestTitle||text;
     if(trig&&qs&&qs.length){
       addMessage(data.chatResponse||data.ChatResponse||"I've opened your practice test.","ai",false,null,{title,questions:qs});
       verificationQuestions=qs.map(q=>({...q,selectedAnswer:null,mistakeType:normMistake(q.mistakeType)}));openTestingInterface(title);
     }else addMessage(data.response||data.chatResponse||data.ChatResponse||"Nino couldn't answer that just now. Try sending it again.","ai");
-  }catch(err){
-    if(err&&err.name==='AbortError')return;
-    $(tId)?.remove();
-    addMessage("### Connection problem\n\nCouldn't reach Nino. Check your internet connection, then send your message again.","ai");
-  }finally{
-    if(drainTimer){clearInterval(drainTimer);drainTimer=null}
-    activeStreamController=null;
-    stopCurrentStream=null;
-    glow.classList.remove('busy');
-    updateSendState();
-  }
+  }catch{$(tId)?.remove();addMessage("### Connection problem\n\nCouldn't reach Nino. Check your internet connection, then send your message again.","ai")}
+  finally{glow.classList.remove('busy');updateSendState()}
 }
-input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();send(false)}});
+input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();send()}});
 input.addEventListener('input',()=>{autoGrow();updateSendState()});
 let lastW=innerWidth;
 window.addEventListener('resize',()=>{
@@ -859,6 +696,7 @@ window.addEventListener('resize',()=>{
   if(isMobile()){slider.classList.add('hidden');testSection.style.width='';if(!wm&&!$('return-btn'))testSection.classList.add('shown')}
   else{slider.classList.remove('hidden');setSplitView(50);testSection.classList.remove('shown');$('return-btn')?.remove()}
 });
+
 
 /* ---- Welcome: subject picker, rotating prompts, hover spotlight ---- */
 function toggleSubjects(){$('subj').classList.toggle('open')}
@@ -883,6 +721,7 @@ function refreshIsland(){
 [[glow,{attributes:true}],[configurator,{attributes:true}],[testSection,{attributes:true}],[$('countdown'),{childList:true,characterData:true,subtree:true}]]
   .forEach(([el,o])=>new MutationObserver(refreshIsland).observe(el,o));
 document.addEventListener('pointerdown',e=>{if(e.target.closest&&e.target.closest('button')&&navigator.vibrate)navigator.vibrate(6)},{passive:true});
+
 
 /* ---- v4: always open on the home screen; focus input on desktop; mark home state ---- */
 const _showWelcome=showWelcome;
@@ -937,6 +776,7 @@ chipsW.querySelector('.ch-arrow.l').onclick=()=>chipsEl.scrollBy({left:-chipsEl.
 chipsW.querySelector('.ch-arrow.r').onclick=()=>chipsEl.scrollBy({left:chipsEl.clientWidth*.7,behavior:'smooth'});
 chipsEl.addEventListener('wheel',e=>{if(Math.abs(e.deltaY)>Math.abs(e.deltaX)&&chipsEl.scrollWidth>chipsEl.clientWidth){chipsEl.scrollLeft+=e.deltaY;e.preventDefault()}},{passive:false});
 updChips();
+
 </script>
 </body>
 </html>
