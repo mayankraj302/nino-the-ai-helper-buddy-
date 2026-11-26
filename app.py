@@ -955,7 +955,8 @@ def generate_test_batch(specs, api_key):
             "Return only the JSON object."
         )
         contents = [types.Content(role="user", parts=[types.Part.from_text(text=prompt)])]
-        max_out = TEST_THINKING_BUDGET + 1200 * len(todo) + 500
+        # Thinking tokens count inside max_output_tokens on Gemini 4/3.8, so leave headroom
+        max_out = 4096 + 1400 * len(todo)
         text, err = generate_text(
             contents,
             TEST_SYSTEM,
@@ -963,7 +964,7 @@ def generate_test_batch(specs, api_key):
             models=REASONING_MODELS,
             temperature=0.25,
             max_tokens=max_out,
-            thinking_budget=TEST_THINKING_BUDGET,
+            thinking_level=TEST_THINKING_LEVEL,
             json_mode=True,
         )
         data = parse_json_loose(text)
@@ -1079,22 +1080,23 @@ def ask_ai_stream(prompt, message_history, api_key, file_bytes=None, mime_type=N
     current_parts.append(types.Part.from_text(text=prompt))
     formatted_contents.append(types.Content(role="user", parts=current_parts))
 
-    think, visible = THINKING[kind]
+    level, visible = THINKING[kind]
     selected_models = (
         REASONING_MODELS
         if (kind in ("doubt", "solution", "visual") or bool(file_bytes))
         else FAST_MODELS
     )
+    # Add thinking-token headroom when reasoning is enabled
+    token_cap = visible + (3000 if level == "high" else 1500 if level == "medium" else 0)
     return generate_text_stream(
         formatted_contents,
         SYSTEM_INSTRUCTIONS,
         api_key,
         models=selected_models,
         temperature=0.7 if kind == "chat" else 0.2,
-        max_tokens=think + visible,
-        thinking_budget=think,
+        max_tokens=token_cap,
+        thinking_level=level,
     )
-
 
 # ==============================================================================
 # DISCORD LOGGING & FEEDBACK
