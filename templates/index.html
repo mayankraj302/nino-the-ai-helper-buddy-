@@ -125,7 +125,7 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
 .edit-btn{position:absolute;left:-44px;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-size:14px;color:var(--mu);opacity:0;background:var(--gl);border:1px solid var(--gb)}
 .msg.user:hover .edit-btn{opacity:1}@media(hover:none){.edit-btn{opacity:.8}}
 .msg.ai{gap:12px;align-items:flex-start}
-.msg.ai>.mark{width:32px;height:32px;font-size:0;border-radius:50%;margin-top:2px;background:conic-gradient(from var(--ang),#4f8dff,#2fd0c0,#7d7aff,#4f8dff);animation:spin 6s linear infinite;box-shadow:0 0 18px rgba(79,141,255,.55)}
+.msg.ai>.mark{width:32px;height:32px;border-radius:50%;margin-top:2px;background:conic-gradient(from var(--ang),#4f8dff,#2fd0c0,#7d7aff,#4f8dff);animation:spin 6s linear infinite;box-shadow:0 0 18px rgba(79,141,255,.55)}
 @keyframes spin{to{--ang:360deg}}
 .ai-text{flex:1;min-width:0;font-size:16.5px;line-height:1.65;overflow-wrap:anywhere;padding-top:3px}
 .rich p{margin-bottom:12px}.rich p:last-child{margin:0}
@@ -322,6 +322,34 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
 @keyframes rot{to{transform:rotate(360deg)}}
 .gw.nudge{animation:nudge .38s var(--ease)}
 @keyframes nudge{20%{transform:translateX(-6px)}45%{transform:translateX(5px)}70%{transform:translateX(-3px)}}
+
+/* ---- Feedback bar on AI messages ---- */
+.msg-fb{display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:9px;border-top:1px solid var(--ln);opacity:0;transition:opacity .3s;flex-wrap:wrap}
+.msg.ai:hover .msg-fb,.msg-fb.rated{opacity:1}
+@media(hover:none){.msg-fb{opacity:.75}}
+.fb-btn{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;color:var(--mu);background:var(--gl);border:1px solid var(--gb);transition:background .2s,color .2s,transform .28s var(--ease);white-space:nowrap;flex-shrink:0}
+.fb-btn:hover{background:var(--gl2);color:var(--tx)}
+.fb-btn:active{transform:scale(.92)}
+.fb-btn.up.voted{color:var(--grn);background:rgba(48,209,88,.18);border-color:rgba(48,209,88,.4)}
+.fb-btn.dn.voted{color:var(--red);background:rgba(255,69,58,.18);border-color:rgba(255,69,58,.4)}
+/* ---- Feedback modal ---- */
+.stars{display:flex;gap:5px;padding:4px 2px 2px}
+.star{font-size:30px;cursor:pointer;transition:color .18s,transform .28s var(--ease);line-height:1;user-select:none;color:var(--dm)}
+.star.on{color:#ffb340}
+.star:hover{transform:scale(1.22)}
+.fb-cats{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 6px}
+.fb-cat{padding:7px 16px;border-radius:999px;font-size:13.5px;font-weight:600;color:var(--mu);background:var(--gl);border:1px solid var(--gb);transition:all .2s}
+.fb-cat.on{color:var(--blue);background:rgba(10,132,255,.18);border-color:rgba(10,132,255,.45)}
+.fb-textarea{width:100%;min-height:84px;padding:12px 14px;border-radius:18px;border:1px solid var(--gb);background:var(--gl);color:var(--tx);font:inherit;font-size:15px;line-height:1.5;outline:0;resize:none;margin-top:2px;transition:border-color .2s}
+.fb-textarea:focus{border-color:rgba(10,132,255,.5)}
+/* ---- Test loading animation ---- */
+@keyframes rise{from{transform:translateY(16px) scale(.97);opacity:0}to{transform:none;opacity:1}}
+.test-generating{display:flex;align-items:center;gap:10px;color:var(--mu);font-size:15px;padding-top:6px}
+.test-generating .tg-dots{display:flex;gap:3px;align-items:center}
+.test-generating .tg-dots b{width:4px;height:4px;border-radius:50%;background:var(--ai);animation:pl 1s ease-in-out infinite}
+.test-generating .tg-dots b:nth-child(2){animation-delay:.18s}
+.test-generating .tg-dots b:nth-child(3){animation-delay:.36s}
+#tg-status{transition:opacity .35s}
 </style>
 </head>
 <body class="home"><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="nino-logo" viewBox="0 0 40 40"><defs><linearGradient id="nl-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b9bff"/><stop offset="1" stop-color="#1fcfb8"/></linearGradient><linearGradient id="nl-h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><rect width="40" height="40" rx="12" fill="url(#nl-g)"/><rect width="40" height="40" rx="12" fill="url(#nl-h)"/><ellipse cx="20" cy="20" rx="13.5" ry="5.4" transform="rotate(-32 20 20)" fill="none" stroke="#fff" stroke-opacity=".92" stroke-width="2.2"/><circle cx="20" cy="20" r="3.7" fill="#fff"/><path d="M31 8.2l1.35 3.45 3.45 1.35-3.45 1.35L31 17.8l-1.35-3.45L26.2 13l3.45-1.35z" fill="#fff"/></symbol></defs></svg>
@@ -407,25 +435,55 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
   </div>
 </div>
 
+<!-- Profile Modal -->
 <div id="profile-modal" class="modal" onclick="closeModal('profile-modal')"><div class="modal-sheet" onclick="event.stopPropagation()">
   <div class="modal-nav"><span style="width:70px"></span><b>Profile</b><button class="btn sm red" onclick="closeModal('profile-modal')">Done</button></div>
   <div class="modal-body"><div class="ph"><div class="pa"><svg viewBox="0 0 40 40" aria-hidden="true"><use href="#nino-logo"/></svg></div><h2 id="profile-name">Loading…</h2><span>IIT-JEE aspirant</span></div>
     <div class="cell"><small>Current target</small><div id="profile-goal">…</div></div>
     <div class="cell"><div style="display:flex;justify-content:space-between"><small>Progress</small><small id="profile-progress-text" style="color:var(--grn)">--%</small></div><div class="progress"><div id="profile-progress-bar"></div></div></div></div>
 </div></div>
+
+<!-- Settings Modal -->
 <div id="settings-modal" class="modal" onclick="closeModal('settings-modal')"><div class="modal-sheet" onclick="event.stopPropagation()">
   <div class="modal-nav"><span style="width:70px"></span><b>Settings</b><button class="btn sm red" onclick="closeModal('settings-modal')">Done</button></div>
   <div class="modal-body"><div class="gl">Mentor style</div>
     <div class="seg" id="seg-persona"><button data-v="adaptive" class="on" onclick="pickSeg('seg-persona',this)">Adaptive</button><button data-v="strict" onclick="pickSeg('seg-persona',this)">Strict</button><button data-v="supportive" onclick="pickSeg('seg-persona',this)">Supportive</button></div>
     <p class="note" id="persona-note">Balances empathy and logic.</p>
-    <div class="gl" style="margin-top:12px">Your own Gemini key (optional)</div>
+    <div class="gl" style="margin-top:14px">Your own Gemini key (optional)</div>
     <input id="user-key-input" class="key-input" type="password" autocomplete="off" placeholder="Paste your key">
     <p class="note">Stored only in this browser, never on our server. Leave empty to use Nino's shared quota.</p>
-    <button id="save-settings-btn" class="btn red btn-save" onclick="saveSettings()">Save settings</button></div>
+    <button id="save-settings-btn" class="btn red btn-save" onclick="saveSettings()">Save settings</button>
+    <div class="gl" style="margin-top:18px">Help improve Nino</div>
+    <button class="btn" style="width:100%;justify-content:flex-start;gap:12px;padding:0 18px;min-height:52px;border-radius:20px;font-size:15px;margin-top:4px" onclick="closeModal('settings-modal');setTimeout(()=>openFeedbackModal(''),280)">
+      <span style="font-size:18px">✦</span>Send feedback to Mayank
+    </button>
+  </div>
 </div></div>
+
+<!-- Feedback Modal -->
+<div id="feedback-modal" class="modal" onclick="closeModal('feedback-modal')"><div class="modal-sheet" onclick="event.stopPropagation()">
+  <div class="modal-nav"><span style="width:70px"></span><b>Send feedback</b><button class="btn sm red" onclick="closeModal('feedback-modal')">Close</button></div>
+  <div class="modal-body">
+    <p style="color:var(--mu);font-size:14px;margin-bottom:16px">Your feedback helps make Nino better. Mayank reads every note.</p>
+    <div class="gl">Rating</div>
+    <div class="stars" id="fb-stars">
+      <span class="star" data-v="1">★</span><span class="star" data-v="2">★</span><span class="star" data-v="3">★</span><span class="star" data-v="4">★</span><span class="star" data-v="5">★</span>
+    </div>
+    <div class="gl" style="margin-top:14px">Category</div>
+    <div class="fb-cats">
+      <button class="fb-cat" data-v="wrong_answer" onclick="pickFbCat(this)">Wrong answer</button>
+      <button class="fb-cat" data-v="bug" onclick="pickFbCat(this)">Bug</button>
+      <button class="fb-cat on" data-v="other" onclick="pickFbCat(this)">General</button>
+      <button class="fb-cat" data-v="idea" onclick="pickFbCat(this)">Idea / suggestion</button>
+    </div>
+    <div class="gl" style="margin-top:14px">Message <span style="color:var(--dm);font-weight:400">(optional)</span></div>
+    <textarea id="fb-message" class="fb-textarea" placeholder="Tell us what happened or what you'd like to see…"></textarea>
+    <button id="fb-submit-btn" class="btn red btn-save" style="margin-top:16px" onclick="submitFeedback()">Send feedback</button>
+  </div>
+</div></div>
+
 <script>
 const LOGO='<svg viewBox="0 0 40 40" aria-hidden="true"><use href="#nino-logo"/></svg>';
-
 
 const ICONS={chev:'<path d="M9 5.500l6.500 6.500L9 18.500" stroke="currentColor" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',flame:'<path d="M12 2.500c.5 3-1.500 4.500-3 6.500-1.300 1.800-2 3.200-2 5.200a5 5 0 0010 0c0-2-.8-3.300-1.800-4.600.1 1.300-.5 2.200-1.400 2.600.6-3.300-.8-6.800-1.800-9.700z" fill="currentColor"/>',camera:'<path d="M4 8.500a2 2 0 012-2h1.800l1.200-2h6l1.200 2H18a2 2 0 012 2V17a2 2 0 01-2 2H6a2 2 0 01-2-2z" fill="none" stroke="currentColor" stroke-width="1.900" stroke-linejoin="round"/><circle cx="12" cy="12.800" r="3.200" fill="none" stroke="currentColor" stroke-width="1.900"/>',atom:'<circle cx="12" cy="12" r="1.800" fill="currentColor"/><ellipse cx="12" cy="12" rx="9" ry="3.800" fill="none" stroke="currentColor" stroke-width="1.700"/><ellipse cx="12" cy="12" rx="9" ry="3.800" transform="rotate(60 12 12)" fill="none" stroke="currentColor" stroke-width="1.700"/><ellipse cx="12" cy="12" rx="9" ry="3.800" transform="rotate(120 12 12)" fill="none" stroke="currentColor" stroke-width="1.700"/>',bolt:'<path d="M13 2.500L5 13.500h6l-1 8 8-11h-6z" fill="currentColor"/>',flask:'<path d="M9.500 3.500h5M10.500 3.500v6L5 19a1.500 1.500 0 001.300 2h11.400a1.500 1.500 0 001.300-2l-5.500-9.500v-6" fill="none" stroke="currentColor" stroke-width="1.900" stroke-linecap="round" stroke-linejoin="round"/>',sigma:'<path d="M18 5.500H6.500L12.500 12 6.500 18.500H18" stroke="currentColor" stroke-width="2.400" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
 xmark:'<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/>',
@@ -454,15 +512,127 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 marked.setOptions({breaks:true});
 $('nav-gap').style.display='none';
 
+// ==============================================================================
+// MATH & AI TEXT RENDERING
+// ==============================================================================
 function renderMathFormulas(t){
   if(typeof katex==='undefined')return t;
   const o=t.replace(/\$\$([\s\S]+?)\$\$/g,(m,e)=>{try{return '<div style="margin:12px 0;overflow-x:auto;max-width:100%">'+katex.renderToString(e.trim(),{displayMode:true,throwOnError:false})+'</div>'}catch{return m}});
   return o.replace(/\$([^\$\n]+?)\$/g,(m,e)=>{try{return katex.renderToString(e,{displayMode:false,throwOnError:false})}catch{return m}});
 }
+
+/** Converts raw AI text (may include SVGs, markdown, math) into safe HTML string. */
+function renderAIHtml(text){
+  let tx=String(text||'').replace(/```(?:xml|html|svg)?\s*(<svg[\s\S]*?<\/svg>)\s*```/gi,'$1');
+  const svgs=[];
+  tx=tx.replace(/<svg[\s\S]*?<\/svg>/gi,m=>{svgs.push(m);return`%%%SVG_${svgs.length-1}%%%`});
+  let h=marked.parse(renderMathFormulas(tx));
+  svgs.forEach((s,i)=>{
+    const safe=s.replace(/stroke="black"/gi,'stroke="currentColor"').replace(/fill="black"/gi,'fill="currentColor"');
+    h=h.replace(new RegExp(`<p>%%%SVG_${i}%%%</p>|%%%SVG_${i}%%%`,'g'),`<div class="svg-card">${safe}</div>`);
+  });
+  return h;
+}
+
+// ==============================================================================
+// FEEDBACK SYSTEM
+// ==============================================================================
+let _fbRating=0,_fbCat='other',_fbCtx='',_fbCount=0;
+
+// Star rating init
+document.addEventListener('DOMContentLoaded',()=>{
+  const stars=$('fb-stars').querySelectorAll('.star');
+  stars.forEach(s=>{
+    s.onclick=()=>{
+      _fbRating=parseInt(s.dataset.v);
+      stars.forEach(st=>st.classList.toggle('on',parseInt(st.dataset.v)<=_fbRating));
+    };
+    s.onmouseenter=()=>stars.forEach(st=>st.classList.toggle('on',parseInt(st.dataset.v)<=parseInt(s.dataset.v)));
+    s.onmouseleave=()=>stars.forEach(st=>st.classList.toggle('on',parseInt(st.dataset.v)<=_fbRating));
+  });
+});
+
+function openFeedbackModal(ctx){
+  _fbCtx=String(ctx||'').slice(0,900);
+  _fbRating=0;_fbCat='other';
+  $('fb-stars').querySelectorAll('.star').forEach(s=>s.classList.remove('on'));
+  $('feedback-modal').querySelectorAll('.fb-cat').forEach(b=>b.classList.toggle('on',b.dataset.v==='other'));
+  $('fb-message').value='';
+  const btn=$('fb-submit-btn');btn.textContent='Send feedback';btn.disabled=false;
+  openModal('feedback-modal');
+}
+
+function pickFbCat(btn){
+  $('feedback-modal').querySelectorAll('.fb-cat').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');_fbCat=btn.dataset.v;
+}
+
+async function submitFeedback(){
+  const btn=$('fb-submit-btn'),o=btn.textContent;
+  btn.textContent='Sending…';btn.disabled=true;
+  try{
+    const r=await fetch('/api/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      rating:_fbRating,category:_fbCat,
+      message:$('fb-message').value.trim(),
+      context:_fbCtx,name:currentChatId||'Anonymous',
+      screen:`${window.innerWidth}x${window.innerHeight}`,
+      theme:matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'
+    })});
+    if(!r.ok)throw new Error('server error');
+    btn.textContent='Sent! Thanks 🎉';
+    setTimeout(()=>{closeModal('feedback-modal');btn.disabled=false;btn.textContent=o},1300);
+  }catch{
+    btn.textContent='Couldn\'t send. Try again.';btn.disabled=false;
+    setTimeout(()=>btn.textContent=o,2000);
+  }
+}
+
+/** Appends feedback bar to an AI message element. */
+function addFeedbackBar(msgEl,context){
+  if(!msgEl)return;
+  const aiText=msgEl.querySelector('.ai-text');if(!aiText)return;
+  const id='fb'+(++_fbCount);
+  const ctxEnc=encodeURIComponent(String(context||'').slice(0,300));
+  const bar=document.createElement('div');
+  bar.className='msg-fb';
+  bar.innerHTML=
+    `<button class="fb-btn up" id="${id}u" onclick="quickThumb('${id}','up','${ctxEnc}')">👍 Helpful</button>`+
+    `<button class="fb-btn dn" id="${id}d" onclick="quickThumb('${id}','down','${ctxEnc}')">👎 Not helpful</button>`+
+    `<button class="fb-btn" onclick="openFeedbackModal(decodeURIComponent('${ctxEnc}'))">✦ More feedback</button>`;
+  aiText.appendChild(bar);
+}
+
+function quickThumb(id,dir,ctxEnc){
+  const isUp=dir==='up';
+  const u=$(`${id}u`),d=$(`${id}d`);
+  if(!u||!d)return;
+  // Toggle — clicking same button again clears it
+  const wasOn=u.classList.contains('voted')&&isUp || d.classList.contains('voted')&&!isUp;
+  u.classList.toggle('voted',!wasOn&&isUp);
+  d.classList.toggle('voted',!wasOn&&!isUp);
+  u.closest('.msg-fb').classList.toggle('rated',!wasOn);
+  if(!wasOn){
+    const ctx=decodeURIComponent(ctxEnc);
+    fetch('/api/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      rating:isUp?5:1,category:isUp?'other':'wrong_answer',
+      message:isUp?'👍 Marked as helpful':'👎 Marked as not helpful',
+      context:ctx,name:currentChatId||'Anonymous',
+      screen:`${window.innerWidth}x${window.innerHeight}`,
+      theme:matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'
+    })}).catch(()=>{});
+  }
+}
+
+// ==============================================================================
+// AMBIENT & EVENTS
+// ==============================================================================
 document.addEventListener('pointermove',e=>{const a=$('amb');a.style.setProperty('--px',(e.clientX/innerWidth*100)+'%');a.style.setProperty('--py',(e.clientY/innerHeight*100)+'%')},{passive:true});
 window.addEventListener('paste',e=>{const it=e.clipboardData?.items;if(!it)return;for(const i of it)if(i.type.indexOf('image')!==-1){setFile(i.getAsFile());input.focus();break}});
 window.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{const s=$('splash');s.classList.add('out');setTimeout(()=>{s.remove();loadSidebarChats();initializeDraggableResizer()},500)},900);updateSendState()});
 
+// ==============================================================================
+// SESSION & HISTORY
+// ==============================================================================
 function loadSidebarChats(){
   try{chatSessions=JSON.parse(localStorage.getItem('helper_buddy_chats')||'[]')}catch{chatSessions=[]}
   startNewChat();
@@ -498,6 +668,10 @@ function startNewChat(){
   currentChatId='chat_'+Date.now();chat.innerHTML="";showWelcome(true);clearSelectedFile();closeTestingInterface();verificationQuestions=[];
   if(sidebar.classList.contains('open'))toggleMenu();renderSidebarList();
 }
+
+// ==============================================================================
+// MODALS
+// ==============================================================================
 const openModal=id=>requestAnimationFrame(()=>$(id).classList.add('show')),closeModal=id=>$(id).classList.remove('show');
 function pickSeg(id,btn){
   $(id).querySelectorAll('button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
@@ -522,9 +696,13 @@ async function saveSettings(){
   try{
     await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:currentChatId||"Anonymous",settings:{mode:segValue('seg-persona')}})});
     b.textContent='Saved';setTimeout(()=>{closeModal('settings-modal');b.textContent=o},800);
-  }catch{b.textContent='Couldn’t save. Try again.';setTimeout(()=>{b.textContent=o},1800)}
+  }catch{b.textContent="Couldn't save. Try again.";setTimeout(()=>{b.textContent=o},1800)}
 }
 function toggleMenu(){const o=sidebar.classList.toggle('open');backdrop.classList.toggle('show',o)}
+
+// ==============================================================================
+// SUGGESTIONS
+// ==============================================================================
 function useSuggestion(t){if(glow.classList.contains('busy'))return;input.value=t;send()}
 function triggerFilePicker(){fileUploader.click()}
 function setFile(f){
@@ -535,9 +713,12 @@ function setFile(f){
 function handleFileSelection(){if(fileUploader.files&&fileUploader.files[0])setFile(fileUploader.files[0])}
 function clearSelectedFile(){selectedFileObject=null;fileUploader.value="";filePreview.classList.add('hidden');updateSendState()}
 function updateSendState(){sendBtn.classList.toggle('off',(!input.value.trim()&&!selectedFileObject)||glow.classList.contains('busy'))}
-function autoGrow(){input.style.height='auto';input.style.height=Math.min(input.scrollHeight,140)+'px'}
+function autoGrow(){input.style.height='auto';const h=input.scrollHeight;input.style.height=Math.min(h,140)+'px';input.style.overflowY=h>140?'auto':'hidden'}
 function editMessage(b){input.value=decodeURIComponent(b.getAttribute('data-raw'));autoGrow();updateSendState();input.focus()}
 
+// ==============================================================================
+// TEST STASH
+// ==============================================================================
 const testStash={};let stashN=0;
 function extractTestPayload(text){
   if(typeof text!=='string'||!/"question"\s*:/.test(text)||!/"options"\s*:/.test(text))return null;
@@ -552,6 +733,10 @@ function reopenTest(id){
   const p=testStash[id];if(!p||!p.questions)return;
   verificationQuestions=p.questions.map(q=>({...q,selectedAnswer:null,mistakeType:normMistake(q.mistakeType)}));openTestingInterface(p.title||"Practice test");
 }
+
+// ==============================================================================
+// ADD MESSAGE
+// ==============================================================================
 function addMessage(text,sender,hist=false,imageUrl=null,testObj=null){
   const w=document.createElement('div');w.className=`msg ${sender}`;text=text==null?'':String(text);
   const payload=sender==='ai'?((testObj&&Array.isArray(testObj.questions)&&testObj.questions.length)?{count:testObj.questions.length,questions:testObj.questions,message:text,title:testObj.title||''}:extractTestPayload(text)):null;
@@ -559,12 +744,12 @@ function addMessage(text,sender,hist=false,imageUrl=null,testObj=null){
     const id='t'+(++stashN);testStash[id]=payload;
     const m=payload.message?marked.parse(renderMathFormulas(payload.message)):'<p>I prepared a practice test for you.</p>';
     w.innerHTML=`<span class="mark">${LOGO}</span><div class="ai-text rich">${m}<div class="q-card" style="display:flex;align-items:center;gap:12px;margin:12px 0 0;max-width:420px;padding:12px 14px;animation:none"><span class="mark" style="width:40px;height:40px;border-radius:12px;box-shadow:none;font-size:19px">${icon('list')}</span><div style="flex:1;min-width:0"><b style="display:block;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(payload.title||'Practice test')}</b><small style="color:var(--mu)">${payload.count} question${payload.count===1?'':'s'}</small></div>${payload.questions?`<button class="btn sm red" onclick="reopenTest('${id}')">Open test</button>`:''}</div></div>`;
+    // Add feedback bar to test messages too
+    if(payload.message) setTimeout(()=>addFeedbackBar(w,payload.message),80);
   }else if(sender==='ai'){
-    let t=text.replace(/```(?:xml|html|svg)?\s*(<svg[\s\S]*?<\/svg>)\s*```/gi,'$1');const svgs=[];
-    t=t.replace(/<svg[\s\S]*?<\/svg>/gi,m=>{svgs.push(m);return `%%%SVG_${svgs.length-1}%%%`});
-    let h=marked.parse(renderMathFormulas(t));
-    svgs.forEach((s,i)=>{const safe=s.replace(/stroke="black"/gi,'stroke="currentColor"').replace(/fill="black"/gi,'fill="currentColor"');h=h.replace(new RegExp(`<p>%%%SVG_${i}%%%</p>|%%%SVG_${i}%%%`,'g'),`<div class="svg-card">${safe}</div>`)});
-    w.innerHTML=`<span class="mark">${LOGO}</span><div class="ai-text rich">${h}</div>`;
+    w.innerHTML=`<span class="mark">${LOGO}</span><div class="ai-text rich">${renderAIHtml(text)}</div>`;
+    // Add feedback bar
+    setTimeout(()=>addFeedbackBar(w,text),80);
   }else{
     let h=imageUrl?`<img src="${imageUrl}" alt="Attachment" style="max-width:100%;border-radius:12px;display:block;${text?'margin-bottom:8px':''}">`:'';
     h+=esc(text).replace(/\n/g,'<br>');
@@ -574,6 +759,9 @@ function addMessage(text,sender,hist=false,imageUrl=null,testObj=null){
   chat.appendChild(w);if(!hist)afterAdd(w,sender);
 }
 
+// ==============================================================================
+// DRAGGABLE RESIZER
+// ==============================================================================
 function initializeDraggableResizer(){
   let d=false;
   slider.addEventListener('mousedown',()=>{d=true;slider.classList.add('dragging');document.body.style.cursor='col-resize';document.body.style.userSelect='none'});
@@ -581,6 +769,10 @@ function initializeDraggableResizer(){
   document.addEventListener('mouseup',()=>{if(!d)return;d=false;slider.classList.remove('dragging');document.body.style.cursor='';document.body.style.userSelect=''});
 }
 function setSplitView(p){if(isMobile()){testSection.style.width='';return}testSection.style.width=`calc(${100-p}% - 6px)`}
+
+// ==============================================================================
+// TEST INTERFACE
+// ==============================================================================
 function openTestingInterface(topic){
   examinationActive=true;isReviewMode=false;currentTopicContext=topic||"IIT-JEE practice";
   $('config-title').textContent=currentTopicContext;$('sandbox-title').textContent="Practice test";$('return-btn')?.remove();
@@ -653,6 +845,9 @@ function renderMistakeAnalysisDashboard(ok,mk){
   viewport.appendChild(d);renderVerificationQuestions();
 }
 
+// ==============================================================================
+// QUICK-CHIPS
+// ==============================================================================
 const TESTS=[
 {s:'Physics',n:'Mechanics',c:'#ff9f0a',p:'Generate a mock test for Physics Mechanics'},
 {s:'Physics',n:'Magnetism',c:'#ff3b4e',p:'Generate a mock test for Physics Magnetism'},
@@ -661,6 +856,17 @@ const TESTS=[
 {s:'Maths',n:'Calculus',c:'#bf5af2',p:'Generate a mock test for Maths Calculus'},
 {s:'Maths',n:'Algebra',c:'#5b8cff',p:'Generate a mock test for Maths Algebra'}];
 TESTS.forEach(t=>{const b=document.createElement('button');b.className='chip';b.setAttribute('role','listitem');b.innerHTML=`<i style="background:${t.c}"></i>${t.n}<small>${t.s}</small>`;b.onclick=()=>useSuggestion(t.p);$('chips').appendChild(b)});
+
+// ==============================================================================
+// SEND — FIXED SSE STREAMING + TEST LOADING
+// ==============================================================================
+
+/** Rotating status messages shown while Nino thinks */
+const THINK_MSGS   = ['Thinking…','Looking it up…','Working through it…','Almost there…'];
+const TEST_MSGS    = ['Building questions…','Running verification…','Checking answer traps…','Polishing options…','Almost ready…'];
+const TEST_REQ_RE  = /\b(mock\s*tests?|test\s+me|quiz(?:\s+me)?|practice\s+(test|questions?|set)|(?:give|make|create|generate|send|build)\s+(me\s+)?(?:a\s+|an\s+|some\s+)?(?:\d+\s+)?(?:[a-z\-]+\s+){0,3}(?:tests?|questions?|mcqs?|quiz|paper))\b/i;
+
+function looksLikeTestRequest(text){return text.length<=300&&TEST_REQ_RE.test(text)}
 
 async function send(){
   if(glow.classList.contains('busy')){glow.classList.remove('nudge');void glow.offsetWidth;glow.classList.add('nudge');return}
@@ -672,43 +878,109 @@ async function send(){
     let title=text.substring(0,28)+(text.length>28?"…":"");if(!text&&imgUrl)title="Image";
     chatSessions.unshift({id:currentChatId,title,date:Date.now()});localStorage.setItem('helper_buddy_chats',JSON.stringify(chatSessions));renderSidebarList();
   }
-  const tId="think-"+Date.now(),t=document.createElement('div');t.id=tId;t.className='msg ai';
-  t.innerHTML=`<span class="mark">${LOGO}</span><div class="ai-text"><div class="thinking"><i></i>Nino is thinking…</div></div>`;
+
+  // Create the thinking indicator element
+  const isTestHint = !file && looksLikeTestRequest(text);
+  const statusMsgs = isTestHint ? TEST_MSGS : THINK_MSGS;
+  const tId="think-"+Date.now();
+  const t=document.createElement('div');t.id=tId;t.className='msg ai';
+  t.innerHTML=`<span class="mark">${LOGO}</span><div class="ai-text"><div class="thinking"><i></i><span id="tg-status">${statusMsgs[0]}</span></div></div>`;
   chat.appendChild(t);scrollEnd();glow.classList.add('busy');updateSendState();
+
+  // Rotate status text while waiting
+  let _si=0;
+  const _statusInterval=setInterval(()=>{
+    _si=(_si+1)%statusMsgs.length;
+    const el=$('tg-status');if(el){el.style.opacity='0';setTimeout(()=>{if($('tg-status'))$('tg-status').textContent=statusMsgs[_si];el.style.opacity='1'},180)}
+  },isTestHint?2400:3200);
+
   try{
-    const fd=new FormData();fd.append("name",currentChatId);fd.append("interest",text||"General Study Optimization");fd.append("followup",text);if(file)fd.append("file",file);
+    const fd=new FormData();
+    fd.append("name",currentChatId);
+    fd.append("interest",text||"General Study Optimization");
+    fd.append("followup",text);
+    if(file)fd.append("file",file);
     const headers={},uk=localStorage.getItem(USER_KEY_STORAGE);if(uk)headers['X-User-Key']=uk;
-    const res=await fetch("/guide",{method:"POST",body:fd,headers,signal:(AbortSignal.timeout?AbortSignal.timeout(120000):undefined)});
+
+    const res=await fetch("/guide",{
+      method:"POST",body:fd,headers,
+      signal:typeof AbortSignal.timeout==='function'?AbortSignal.timeout(120000):undefined
+    });
+    clearInterval(_statusInterval);
+
+    // ── SSE STREAMING PATH (chat / doubt / solution / visual) ──────────────────
     if((res.headers.get('content-type')||'').includes('text/event-stream')){
-      /* Chat/doubt/solution/visual replies arrive as a Server-Sent Events stream */
-      const reader=res.body.getReader(),dec=new TextDecoder(),box=t.querySelector('.ai-text');let buf='',full='',err=null;
-      while(true){
-        const {done,value}=await reader.read();if(done)break;
-        buf+=dec.decode(value,{stream:true});
-        let i;
-        while((i=buf.indexOf('\n\n'))>=0){
-          const block=buf.slice(0,i);buf=buf.slice(i+2);
-          for(const line of block.split('\n')){
-            if(!line.startsWith('data:'))continue;
-            let ev;try{ev=JSON.parse(line.slice(5).trim())}catch{continue}
-            if(ev.token){full+=ev.token;box.classList.add('rich');box.innerHTML=marked.parse(renderMathFormulas(full));chat.scrollTop=chat.scrollHeight}
-            if(ev.error)err=ev.error;
+      const reader=res.body.getReader();
+      const dec=new TextDecoder();
+      const box=t.querySelector('.ai-text');
+      let buf='',full='',err=null;
+
+      // Clear thinking dot immediately — stream is starting
+      box.innerHTML='';
+
+      try{
+        for(;;){
+          const {done,value}=await reader.read();
+          // Decode — when done, flush remaining bytes from TextDecoder
+          buf+=dec.decode(done?undefined:value,{stream:!done});
+
+          // Parse complete SSE events (delimited by \n\n)
+          let i;
+          while((i=buf.indexOf('\n\n'))>=0){
+            const block=buf.slice(0,i);buf=buf.slice(i+2);
+            for(const line of block.split('\n')){
+              if(!line.startsWith('data:'))continue;
+              let ev;try{ev=JSON.parse(line.slice(5).trim())}catch{continue}
+              if(ev.token){
+                full+=ev.token;
+                // Render incrementally — fast markdown only (no math during streaming to avoid jank)
+                box.classList.add('rich');
+                box.innerHTML=marked.parse(full);
+                chat.scrollTop=chat.scrollHeight;
+              }
+              if(ev.error)err=ev.error;
+            }
           }
+          if(done)break;
         }
+      }catch(e){
+        err=err||String(e);
+        console.warn('[SSE stream error]',e);
       }
-      $(tId)?.remove();
-      addMessage(full||err||"Nino couldn't answer that just now. Try sending it again.","ai");
+
+      // ── Finalize in-place (no flash from remove+re-add) ──────────────────────
+      const finalText=full||err||"Nino couldn't answer that just now. Try sending it again.";
+      box.classList.add('rich');
+      box.innerHTML=renderAIHtml(finalText);  // Full render: math + SVG + markdown
+      if(full)addFeedbackBar(t,full);
+      afterAdd(t,'ai');
       return;
     }
-    const data=await res.json();$(tId)?.remove();
-    const trig=data.isTestTrigger||data.IsTestTrigger||data.istesttrigger,qs=data.questions||data.Questions,title=data.testTitle||data.TestTitle||text;
+
+    // ── JSON PATH (practice tests) ────────────────────────────────────────────
+    const data=await res.json();
+    $(tId)?.remove();
+    const trig=data.isTestTrigger||data.IsTestTrigger||data.istesttrigger;
+    const qs=data.questions||data.Questions;
+    const title=data.testTitle||data.TestTitle||text;
     if(trig&&qs&&qs.length){
       addMessage(data.chatResponse||data.ChatResponse||"I've opened your practice test.","ai",false,null,{title,questions:qs});
       verificationQuestions=qs.map(q=>({...q,selectedAnswer:null,mistakeType:normMistake(q.mistakeType)}));openTestingInterface(title);
-    }else addMessage(data.response||data.chatResponse||data.ChatResponse||"Nino couldn't answer that just now. Try sending it again.","ai");
-  }catch{$(tId)?.remove();addMessage("### Connection problem\n\nCouldn't reach Nino. Check your internet connection, then send your message again.","ai")}
-  finally{glow.classList.remove('busy');updateSendState()}
+    }else{
+      addMessage(data.response||data.chatResponse||data.ChatResponse||"Nino couldn't answer that just now. Try sending it again.","ai");
+    }
+
+  }catch(e){
+    clearInterval(_statusInterval);
+    $(tId)?.remove();
+    addMessage("### Connection problem\n\nCouldn't reach Nino. Check your internet connection, then send your message again.","ai");
+    console.error('[send error]',e);
+  }finally{
+    clearInterval(_statusInterval);
+    glow.classList.remove('busy');updateSendState();
+  }
 }
+
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();send()}});
 input.addEventListener('input',()=>{autoGrow();updateSendState()});
 let lastW=innerWidth;
@@ -722,7 +994,7 @@ window.addEventListener('resize',()=>{
 
 /* ---- Welcome: subject picker, rotating prompts, hover spotlight ---- */
 function toggleSubjects(){$('subj').classList.toggle('open')}
-const PH=['Why does a charged particle move in a circle in a magnetic field?','Solve ∫ x·eˣ dx step by step','Explain SN1 vs SN2 like I’m 15','Give me a test on Rotational Motion'];
+const PH=['Why does a charged particle move in a circle in a magnetic field?','Solve ∫ x·eˣ dx step by step','Explain SN1 vs SN2 like I\'m 15','Give me a test on Rotational Motion'];
 let phi=0;input.placeholder=PH[0];
 setInterval(()=>{
   if(input.value||document.activeElement===input||$('welcome').classList.contains('hidden'))return;
@@ -733,7 +1005,7 @@ document.addEventListener('pointermove',e=>{
   const r=g.getBoundingClientRect();g.style.setProperty('--mx',(e.clientX-r.left)+'px');g.style.setProperty('--my',(e.clientY-r.top)+'px');
 },{passive:true});
 
-/* ---- Dynamic-Island status pill: thinking + live test timer ---- */
+/* ---- Dynamic-Island status pill ---- */
 function refreshIsland(){
   const busy=glow.classList.contains('busy'),timing=examinationActive&&!isReviewMode&&configurator.classList.contains('hidden'),nb=$('navbar');
   nb.classList.toggle('isl',busy||timing);nb.classList.toggle('timing',!busy&&timing);
