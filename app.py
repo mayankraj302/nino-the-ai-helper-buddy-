@@ -1404,6 +1404,36 @@ def guide():
         history_snapshot = server_history if server_history else client_history
         user_goal = current_state["goal"]
 
+        # Vercel's Python runtime does not reliably deliver SSE streams (the response
+        # can hang until the 60s timeout), so reply with one plain JSON body there.
+        # Set NINO_STREAM=1 to force streaming anywhere else.
+        if IS_VERCEL and os.environ.get("NINO_STREAM") != "1":
+            parts, had_error = [], None
+            for ev_type, payload in ask_ai_stream(
+                prompt=user_prompt,
+                message_history=history_snapshot,
+                api_key=api_key,
+                file_bytes=file_bytes,
+                mime_type=mime_type,
+                kind=kind,
+            ):
+                if ev_type == "error":
+                    had_error = payload
+                    break
+                parts.append(payload)
+            full_text = "".join(parts)
+            print(f"[timing] {kind} (json) in {(time.perf_counter() - t0) * 1000:.0f}ms")
+            if not full_text:
+                return jsonify(
+                    {"response": friendly_error(had_error), "progress": updated_pct}
+                )
+            if "[PROGRESS_UP]" in full_text:
+                session_store.advance_progress(name)
+                full_text = full_text.replace("[PROGRESS_UP]", "").strip()
+            session_store.append_history(name, user_prompt, full_text)
+            send_log_to_discord(name, user_goal, updated_pct, user_prompt, full_text)
+            return jsonify({"response": full_text, "progress": updated_pct})
+
         def event_stream():
             # Flush headers immediately so Vercel's edge streams chunks without buffering
             yield ": connected\n\n"
@@ -1446,7 +1476,6 @@ def guide():
             headers={
                 "Cache-Control": "no-cache, no-transform",
                 "X-Accel-Buffering": "no",
-                "Connection": "keep-alive",
             },
         )
     except Exception as e:
