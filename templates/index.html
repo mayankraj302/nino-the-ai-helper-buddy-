@@ -343,6 +343,8 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,[tabindex]:focus
 .seg.fbcat button{font-size:12.5px;padding:0 4px}
 #toast{position:fixed;left:50%;bottom:calc(24px + var(--sb,0px));transform:translate(-50%,20px);z-index:400;padding:11px 18px;border-radius:999px;background:var(--fill,#222);color:var(--tx);border:1px solid var(--gb);box-shadow:var(--sh);font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .3s,transform .4s var(--ease);-webkit-backdrop-filter:blur(30px);backdrop-filter:blur(30px)}
 #toast.show{opacity:1;transform:translate(-50%,0)}
+
+.caret{display:inline-block;width:8px;height:8px;margin-left:5px;border-radius:50%;background:var(--ai);vertical-align:middle;animation:pl 1s ease-in-out infinite}
 </style>
 </head>
 <body class="home"><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="nino-logo" viewBox="0 0 40 40"><defs><linearGradient id="nl-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b9bff"/><stop offset="1" stop-color="#1fcfb8"/></linearGradient><linearGradient id="nl-h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><rect width="40" height="40" rx="12" fill="url(#nl-g)"/><rect width="40" height="40" rx="12" fill="url(#nl-h)"/><ellipse cx="20" cy="20" rx="13.5" ry="5.4" transform="rotate(-32 20 20)" fill="none" stroke="#fff" stroke-opacity=".92" stroke-width="2.2"/><circle cx="20" cy="20" r="3.7" fill="#fff"/><path d="M31 8.2l1.35 3.45 3.45 1.35-3.45 1.35L31 17.8l-1.35-3.45L26.2 13l3.45-1.35z" fill="#fff"/></symbol></defs></svg>
@@ -732,10 +734,11 @@ async function send(){
     const headers={},uk=localStorage.getItem(USER_KEY_STORAGE);if(uk)headers['X-User-Key']=uk;
     const res=await fetch("/guide",{method:"POST",body:fd,headers,signal:(AbortSignal.timeout?AbortSignal.timeout(120000):undefined)});
     if((res.headers.get('content-type')||'').includes('text/event-stream')){
-      /* Chat/doubt/solution/visual replies arrive as a Server-Sent Events stream */
-      const reader=res.body.getReader(),dec=new TextDecoder(),box=t.querySelector('.ai-text');
-      let buf='',full='',err=null,finished=false,broke=false,raf=0;
-      const paint=()=>{raf=0;let v=full;const o=v.lastIndexOf('<svg'),c=v.lastIndexOf('</svg>');if(o>c)v=v.slice(0,o)+'\n\n*Drawing diagram…*';box.classList.add('rich');box.innerHTML=marked.parse(renderMathFormulas(v));chat.scrollTop=chat.scrollHeight};
+      /* Chat/doubt/solution/visual replies arrive as a Server-Sent Events stream.
+         Tokens go into a pacing buffer (makeStreamer) so text flows smoothly even though
+         the model sends it in bursts; the bubble is finalised in place (no rebuild flash). */
+      const reader=res.body.getReader(),dec=new TextDecoder(),st=makeStreamer(t.querySelector('.ai-text'));
+      let buf='',err=null,finished=false,broke=false,chunks=0,tFirst=0;const t0=performance.now();
       const readIdle=()=>new Promise((ok,bad)=>{const to=setTimeout(()=>bad(new Error('idle')),60000);reader.read().then(r=>{clearTimeout(to);ok(r)},e=>{clearTimeout(to);bad(e)})});
       try{
         while(!finished){
@@ -747,7 +750,7 @@ async function send(){
             for(const line of block.split('\n')){
               if(!line.startsWith('data:'))continue;
               let ev;try{ev=JSON.parse(line.slice(5).trim())}catch{continue}
-              if(ev.token){full+=ev.token;if(!raf)raf=requestAnimationFrame(paint)}
+              if(ev.token){if(!chunks)tFirst=performance.now()-t0;chunks++;st.push(ev.token)}
               if(ev.error){err=ev.error;finished=true}
               if(ev.done)finished=true;
             }
@@ -756,10 +759,18 @@ async function send(){
       }catch{broke=true}
       /* Stop reading as soon as the server says "done", even if the host keeps the socket open */
       try{reader.cancel().catch(()=>{})}catch{}
-      if(raf)cancelAnimationFrame(raf);
+      const full=st.text();
+      if(!full&&!err&&broke){st.stop();throw new Error('stream')}
+      if(full)await st.close();else st.stop();
+      console.debug(`[Nino stream] first token ${Math.round(tFirst)}ms, ${chunks} chunk(s), ${full.length} chars`);
+      if(chunks<=1&&full.length>500)console.warn('[Nino stream] the whole reply arrived in ONE piece, so the host is buffering the stream and it cannot feel live.');
+      const finalText=full?(broke&&!finished?full+'\n\n*The reply was cut off. Send your question again if something is missing.*':full):(err||"Nino couldn't answer that just now. Try sending it again.");
+      /* swap the live bubble for the final message in the same frame, without replaying the entrance animation */
+      const stick=nearBottom();
       $(tId)?.remove();
-      if(!full&&!err&&broke)throw new Error('stream');
-      addMessage(full?(broke&&!finished?full+'\n\n*The reply was cut off. Send your question again if something is missing.*':full):(err||"Nino couldn't answer that just now. Try sending it again."),"ai");
+      addMessage(finalText,"ai",true);
+      const fin=chat.lastElementChild;if(fin)fin.style.animation='none';
+      if(stick)chat.scrollTo({top:chat.scrollHeight,behavior:'instant'});
       return;
     }
     const data=await res.json();$(tId)?.remove();
@@ -926,6 +937,71 @@ async function submitFeedback(){
     if(fbCtx){if(fbRating>=4)markVote(fbCtx.w,fbCtx.st,1);else if(fbRating&&fbRating<=2)markVote(fbCtx.w,fbCtx.st,-1)}
     sb.textContent='Sent. Thank you!';setTimeout(()=>{closeModal('feedback-modal');toast('Thanks for the feedback!')},800);
   }else{sb.disabled=false;sb.textContent='Send feedback';$('fb-status').textContent=typeof ok==='string'?ok:'Couldn’t send. Please try again.'}
+}
+
+/* ---------- Smooth streaming ---------- */
+const nearBottom=()=>chat.scrollHeight-chat.scrollTop-chat.clientHeight<160;
+function aiHtml(text){
+  let t=text.replace(/```(?:xml|html|svg)?\s*(<svg[\s\S]*?<\/svg>)\s*```/gi,'$1');const svgs=[];
+  t=t.replace(/<svg[\s\S]*?<\/svg>/gi,m=>{svgs.push(m);return `%%%SVG_${svgs.length-1}%%%`});
+  let h=marked.parse(renderMathFormulas(t));
+  svgs.forEach((sv,i)=>{const safe=sv.replace(/stroke="black"/gi,'stroke="currentColor"').replace(/fill="black"/gi,'fill="currentColor"');h=h.replace(new RegExp(`<p>%%%SVG_${i}%%%</p>|%%%SVG_${i}%%%`,'g'),`<div class="svg-card">${safe}</div>`)});
+  return h;
+}
+/* hide a formula that is still being typed so raw "$x^" never flashes on screen */
+function trimOpenMath(s){
+  if((s.split('$$').length-1)%2===1)return s.slice(0,s.lastIndexOf('$$'));
+  const t=s.replace(/\$\$/g,'§§');
+  if(((t.match(/\$/g)||[]).length)%2===1)return s.slice(0,t.lastIndexOf('$'));
+  if(s.lastIndexOf('\\(')>s.lastIndexOf('\\)'))return s.slice(0,s.lastIndexOf('\\('));
+  if(s.lastIndexOf('\\[')>s.lastIndexOf('\\]'))return s.slice(0,s.lastIndexOf('\\['));
+  return s;
+}
+const addCaret=h=>{const c='<span class="caret"></span>',m=h.match(/<\/(?:p|li|h[1-6])>\s*(?:<\/(?:ul|ol|blockquote)>\s*)*$/);return m?h.slice(0,m.index)+c+h.slice(m.index):h+c};
+function makeStreamer(box){
+  let target='',shown=0,raf=0,last=0,lastPaint=0,gap=40,closed=false,holding=false,waiters=[],dead=false;
+  const schedule=()=>{if(!raf&&!dead)raf=requestAnimationFrame(tick)};
+  function paint(final){
+    let v=target.slice(0,shown);
+    if(holding)v=v.replace(/```(?:xml|html|svg)?[ \t]*\n?\s*$/i,'');
+    v=trimOpenMath(v);
+    if(holding)v+='\n\n*Drawing diagram…*';
+    const stick=nearBottom(),t1=performance.now();
+    let h=aiHtml(v);if(!final)h=addCaret(h);
+    box.classList.add('rich');box.innerHTML=h;
+    if(stick)chat.scrollTo({top:chat.scrollHeight,behavior:'instant'});
+    gap=Math.min(180,Math.max(40,(performance.now()-t1)*2.5));lastPaint=performance.now();
+  }
+  function tick(ts){
+    raf=0;if(dead)return;
+    const dt=Math.min(64,last?ts-last:16);last=ts;
+    const backlog=target.length-shown;
+    if(backlog>0){
+      /* ~90 chars/s when idle, speeding up with the backlog so we never lag far behind the model */
+      let cps=Math.min(3000,Math.max(90,backlog*4));
+      if(closed)cps=Math.max(cps,backlog/0.5);
+      let next=Math.min(target.length,shown+Math.max(1,Math.round(cps*dt/1000)));
+      /* never type into the middle of a diagram: wait at its start, then jump over the whole SVG */
+      const sv=target.indexOf('<svg',shown);
+      holding=false;
+      if(sv!==-1&&sv<next){
+        const e=target.indexOf('</svg>',sv);
+        if(e===-1){next=sv;holding=true}
+        else{next=e+6;const m=/^\s*```/.exec(target.slice(next));if(m)next+=m[0].length}
+      }
+      shown=next;
+    }
+    const caughtUp=shown>=target.length;
+    if(closed&&caughtUp){paint(true);dead=true;waiters.splice(0).forEach(r=>r());return}
+    if(performance.now()-lastPaint>=gap||(caughtUp&&closed))paint(false);
+    if(!caughtUp||closed||holding)schedule();
+  }
+  return{
+    push(tok){target+=tok;schedule()},
+    text:()=>target,
+    close(){closed=true;if(document.hidden)shown=target.length;return new Promise(r=>{waiters.push(r);schedule()})},
+    stop(){dead=true;if(raf)cancelAnimationFrame(raf);waiters.splice(0).forEach(r=>r())}
+  };
 }
 </script>
 </body>
