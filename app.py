@@ -36,24 +36,26 @@ FAST_MODELS = [
     "gemini-3.1-flash-lite",
 ]
 
-# Gemini 4 Hydrogen (free-tier eligible + strongest fast STEM reasoning) -> 3.8 Flash fallback
+# Gemma 4 31B IT (strong STEM/vision reasoning + generous free-tier limits)
+# Falls back to gemini-3.5-flash-lite (also handles PDFs and high-load spikes)
 REASONING_MODELS = [
-    "gemini-4-hydrogen",
-    "gemini-3.8-flash",
+    "gemma-4-31b-it",
+    "gemini-3.5-flash-lite",
 ]
 
-GEMINI_TIMEOUT_MS = 45000
-TEST_BATCH_SIZE = 2
-TEST_THINKING_LEVEL = "high"  # Used by gemini-4-hydrogen & gemini-3.8-flash
+GEMINI_TIMEOUT_MS = 28000
+TEST_BATCH_SIZE = 3
+TEST_THINKING_LEVEL = "medium"
 
 # Format: (thinking_level or None, visible_output_tokens)
 THINKING = {
     "chat": (None, 700),
-    "doubt": ("medium", 1600),
-    "solution": ("high", 3200),
-    "visual": ("high", 3800),
+    "doubt": ("low", 1600),
+    "solution": ("medium", 3200),
+    "visual": ("medium", 3600),
 }
-#==============================================================================
+
+# ==============================================================================
 # FILE VALIDATION & USAGE LIMITS
 # ==============================================================================
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "pdf"}
@@ -94,7 +96,7 @@ def get_api_key():
 # BACKGROUND EXECUTORS
 # ==============================================================================
 _bg_pool = ThreadPoolExecutor(max_workers=4)
-_test_pool = ThreadPoolExecutor(max_workers=8)
+_test_pool = ThreadPoolExecutor(max_workers=3)
 
 
 def run_bg(fn, *args):
@@ -327,8 +329,14 @@ def get_client(api_key):
             _clients[api_key] = client
         return client
 
+
 def _uses_thinking_level(model_name):
-    return model_name.startswith(("gemini-4-", "gemini-3.8-"))
+    return model_name.startswith(("gemini-4-", "gemini-3.8-", "gemini-3.5-"))
+
+
+def _is_gemma(model_name):
+    return model_name.startswith("gemma-")
+
 
 def _make_config(
     model_name,
@@ -343,14 +351,14 @@ def _make_config(
         system_instruction=system_instruction,
         max_output_tokens=max_tokens,
     )
-    # Gemini 4 Hydrogen and 3.8 Flash ignore temperature; only pass it for other models
     if not _uses_thinking_level(model_name) and temperature is not None:
         kw["temperature"] = temperature
 
     if json_mode:
         kw["response_mime_type"] = "application/json"
 
-    if use_thinking and thinking_level:
+    # Gemma 4 handles reasoning natively without Gemini ThinkingConfig parameters
+    if use_thinking and thinking_level and not _is_gemma(model_name):
         if _uses_thinking_level(model_name):
             kw["thinking_config"] = types.ThinkingConfig(thinking_level=thinking_level)
         else:
@@ -359,6 +367,7 @@ def _make_config(
                 thinking_budget=budget_map.get(str(thinking_level).lower(), 1024)
             )
     return types.GenerateContentConfig(**kw)
+
 
 def generate_text(
     contents,
@@ -403,7 +412,9 @@ def generate_text(
             last_error = str(e)
             print(f"[Gemini ERROR {model}]: {last_error[:300]}")
             low = last_error.lower()
-            if use_thinking and ("thinking" in low or "invalid_argument" in low):
+            if (use_thinking or json_mode) and (
+                "thinking" in low or "invalid_argument" in low or "json" in low
+            ):
                 try:
                     response = client.models.generate_content(
                         model=model,
@@ -414,7 +425,7 @@ def generate_text(
                             temperature,
                             max_tokens,
                             None,
-                            json_mode,
+                            False,
                             False,
                         ),
                     )
@@ -505,11 +516,24 @@ def generate_text_stream(
     yield ("error", last_error or "empty_response")
 
 
+def _pace_piece(piece, is_vercel=False):
+    """Yields smaller slices from large upstream chunks for smoother UI cadence."""
+    if is_vercel or len(piece) <= 18:
+        yield piece
+        return
+    step = 12
+    for i in range(0, len(piece), step):
+        yield piece[i : i + step]
+        time.sleep(0.01)
+
+
 def friendly_error(err):
     if err == "no_key":
         return "Nino isn't configured yet. Please add a Gemini key in Settings or try later."
     if err == "init":
         return "Nino couldn't start the AI service. Please try again later."
+    if err and "timeout" in err.lower():
+        return "Nino took too long generating that. Try fewer questions or try again in a moment."
     if err and ("429" in err or "quota" in err.lower()):
         return (
             "Nino is very busy right now (daily AI quota reached). "
@@ -824,14 +848,6 @@ _LATEX_CMD_RE = re.compile(r"\\[a-zA-Z]+")
 _MATH_BLOCK_RE = re.compile(r"\$([^\$]+)\$")
 _SYMBOL_RE = re.compile(r"(?<![a-zA-Z0-9_])([a-zA-Z])(?![a-zA-Z0-9_])")
 
-# Standard SI units, physical constants, chemical symbols, and dummy variables
-_IGNORED_SYMBOLS = {
-    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
-    "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
-    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
-    "n", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-}
-# Keep strict checking on unusual variables only when truly absent; override above with focused whitelist:
 _IGNORED_SYMBOLS = {
     "A", "C", "D", "F", "G", "H", "I", "J", "K", "M", "N", "O", "P", "R", "S", "T", "V", "W",
     "c", "d", "e", "g", "h", "i", "k", "m", "n", "s", "t", "x", "y", "z",
@@ -937,60 +953,57 @@ def clean_question(q, spec=None):
 
 
 def generate_test_batch(specs, api_key):
-    """One Gemini call -> (list of valid questions, last_error). Retries once for missing ones."""
-    valid, err = [], None
-    for _attempt in range(2):
-        need = len(specs) - len(valid)
-        if need <= 0:
-            break
-        todo = specs[len(valid) :] if valid else specs
-        lines = "\n".join(
-            f"{i}. Subject: {s['subject']} | Topic: {s['topic']} | Required twist: {s['twist']}"
-            for i, s in enumerate(todo, 1)
-        )
-        prompt = (
-            f"Write exactly {len(todo)} questions, one for each line below, in this order.\n{lines}\n"
-            "Use the 'scratchpad' field to verify all physics/chemistry/math step-by-step and define "
-            "every symbol before finalizing 'question', 'solution', and 'options'.\n"
-            "Return only the JSON object."
-        )
-        contents = [types.Content(role="user", parts=[types.Part.from_text(text=prompt)])]
-        # Thinking tokens count inside max_output_tokens on Gemini 4/3.8, so leave headroom
-        max_out = 4096 + 1400 * len(todo)
-        text, err = generate_text(
-            contents,
-            TEST_SYSTEM,
-            api_key,
-            models=REASONING_MODELS,
-            temperature=0.25,
-            max_tokens=max_out,
-            thinking_level=TEST_THINKING_LEVEL,
-            json_mode=True,
-        )
-        data = parse_json_loose(text)
-        qs = (data or {}).get("questions") or (data or {}).get("Questions") or []
-        if isinstance(qs, list):
-            for idx, q in enumerate(qs):
-                spec = todo[idx] if idx < len(todo) else todo[-1]
-                cq = clean_question(q, spec=spec)
-                if cq:
-                    valid.append(cq)
-        valid = valid[: len(specs)]
-    return valid, err
+    """Generates a single batch of MCQs with bounded token and retry overhead."""
+    lines = "\n".join(
+        f"{i}. Subject: {s['subject']} | Topic: {s['topic']} | Required twist: {s['twist']}"
+        for i, s in enumerate(specs, 1)
+    )
+    prompt = (
+        f"Write exactly {len(specs)} questions, one for each line below, in this order.\n{lines}\n"
+        "Use the 'scratchpad' field to verify all physics/chemistry/math step-by-step and define "
+        "every symbol before finalizing 'question', 'solution', and 'options'.\n"
+        "Return only the JSON object."
+    )
+    contents = [types.Content(role="user", parts=[types.Part.from_text(text=prompt)])]
+    max_out = 2500 + 900 * len(specs)
+
+    text, err = generate_text(
+        contents,
+        TEST_SYSTEM,
+        api_key,
+        models=REASONING_MODELS,
+        temperature=0.25,
+        max_tokens=max_out,
+        thinking_level=TEST_THINKING_LEVEL,
+        json_mode=True,
+    )
+    data = parse_json_loose(text)
+    qs = (data or {}).get("questions") or (data or {}).get("Questions") or []
+    valid = []
+    if isinstance(qs, list):
+        for idx, q in enumerate(qs):
+            spec = specs[idx] if idx < len(specs) else specs[-1]
+            cq = clean_question(q, spec=spec)
+            if cq:
+                valid.append(cq)
+    return valid[: len(specs)], err
 
 
 def build_test(count, subject, hint, api_key):
-    """-> (title, questions, last_error). Batches run in parallel."""
+    """-> (title, questions, last_error). Batches run with bounded timeout."""
     specs = build_specs(count, subject, hint)
-    batches = chunk_specs(specs)
+    batches = chunk_specs(specs, size=TEST_BATCH_SIZE)
     futures = [_test_pool.submit(generate_test_batch, b, api_key) for b in batches]
     questions, err = [], None
+    batch_timeout = 26 if IS_VERCEL else 35
+
     for f in futures:
         try:
-            # Stay safely under Vercel's 60s maxDuration
-            qs, e = f.result(timeout=55 if IS_VERCEL else 75)
+            qs, e = f.result(timeout=batch_timeout)
             questions.extend(qs)
             err = err or e
+        except TimeoutError:
+            err = err or "timeout"
         except Exception as e:
             err = err or str(e)
 
@@ -1081,13 +1094,16 @@ def ask_ai_stream(prompt, message_history, api_key, file_bytes=None, mime_type=N
     formatted_contents.append(types.Content(role="user", parts=current_parts))
 
     level, visible = THINKING[kind]
-    selected_models = (
-        REASONING_MODELS
-        if (kind in ("doubt", "solution", "visual") or bool(file_bytes))
-        else FAST_MODELS
-    )
-    # Add thinking-token headroom when reasoning is enabled
-    token_cap = visible + (3000 if level == "high" else 1500 if level == "medium" else 0)
+    # Gemma 4 supports images + text; route PDFs directly to Gemini Flash-Lite
+    if mime_type == "application/pdf":
+        selected_models = FAST_MODELS
+    elif kind in ("doubt", "solution", "visual") or bool(file_bytes):
+        selected_models = REASONING_MODELS
+    else:
+        selected_models = FAST_MODELS
+
+    headroom = 1400 if level == "high" else 800 if level == "medium" else 400 if level == "low" else 0
+    token_cap = visible + headroom
     return generate_text_stream(
         formatted_contents,
         SYSTEM_INSTRUCTIONS,
@@ -1097,6 +1113,7 @@ def ask_ai_stream(prompt, message_history, api_key, file_bytes=None, mime_type=N
         max_tokens=token_cap,
         thinking_level=level,
     )
+
 
 # ==============================================================================
 # DISCORD LOGGING & FEEDBACK
@@ -1455,8 +1472,9 @@ def guide():
                         break
                     parts.append(payload)
                     clean_piece = payload.replace("[PROGRESS_UP]", "")
-                    if clean_piece:
-                        yield sse({"token": clean_piece})
+                    for sub in _pace_piece(clean_piece, is_vercel=IS_VERCEL):
+                        if sub:
+                            yield sse({"token": sub})
             except GeneratorExit:
                 raise
             except Exception as e:
