@@ -7,7 +7,7 @@ import random
 import tempfile
 import threading
 import subprocess
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait
 from datetime import date, datetime, timezone
 import requests
 from flask import (
@@ -31,31 +31,45 @@ application = app  # Explicit alias for WSGI servers
 IS_VERCEL = bool(os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV"))
 DATA_DIR = "/tmp" if IS_VERCEL else "."
 
-FAST_MODELS = [
-    "gemini-3.5-flash-lite",
-    "gemini-3.1-flash-lite",
-]
+def _models_from_env(var, default):
+    raw = os.environ.get(var, "")
+    items = [m.strip() for m in raw.split(",") if m.strip()]
+    return items or default
 
-# Gemma 4 31B IT (strong STEM/vision reasoning + generous free-tier limits)
-# Falls back to gemini-3.5-flash-lite (also handles PDFs and high-load spikes)
-REASONING_MODELS = [
-    "gemma-4-31b-it",
-    "gemini-3.5-flash-lite",
-]
 
-GEMINI_TIMEOUT_MS = 28000
-TEST_BATCH_SIZE = 3
-TEST_THINKING_LEVEL = "medium"
+# Chat / quick replies. Gemma 4 31B is the last-resort fallback (thinking forced OFF).
+FAST_MODELS = _models_from_env(
+    "NINO_FAST_MODELS",
+    ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemma-4-31b-it"],
+)
+
+# Reasoning (doubts, full solutions, diagrams, practice tests).
+# Gemma 4 31B first (Gemini API id: gemma-4-31b-it), Gemini 3.8 Flash as fallback.
+# Override without redeploying code: NINO_REASONING_MODELS="modelA,modelB"
+REASONING_MODELS = _models_from_env(
+    "NINO_REASONING_MODELS",
+    ["gemma-4-31b-it", "gemini-3.8-flash"],
+)
+
+GEMINI_TIMEOUT_MS = 45000  # per-call default when no request deadline is given
+
+# Total time one request may spend talking to Gemini. Vercel kills the function at its
+# maxDuration (60s here), so stay under it. If you raise maxDuration in vercel.json
+# (up to 300s with Fluid compute), also raise this: NINO_BUDGET_S=240
+TOTAL_BUDGET_S = float(os.environ.get("NINO_BUDGET_S") or (52 if IS_VERCEL else 110))
+
+TEST_BATCH_SIZE = int(os.environ.get("NINO_TEST_BATCH") or 2)
+# Gemma 4 thinking is on/off only ("high" = on, "minimal" = off); Gemini 3.8 accepts high too.
+TEST_THINKING_LEVEL = "high"
 
 # Format: (thinking_level or None, visible_output_tokens)
 THINKING = {
     "chat": (None, 700),
-    "doubt": ("low", 1600),
-    "solution": ("medium", 3200),
-    "visual": ("medium", 3600),
+    "doubt": ("medium", 1600),
+    "solution": ("high", 3200),
+    "visual": ("high", 3800),
 }
-
-# ==============================================================================
+#==============================================================================
 # FILE VALIDATION & USAGE LIMITS
 # ==============================================================================
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "pdf"}
@@ -96,7 +110,7 @@ def get_api_key():
 # BACKGROUND EXECUTORS
 # ==============================================================================
 _bg_pool = ThreadPoolExecutor(max_workers=4)
-_test_pool = ThreadPoolExecutor(max_workers=3)
+_test_pool = ThreadPoolExecutor(max_workers=8)
 
 
 def run_bg(fn, *args):
@@ -329,13 +343,12 @@ def get_client(api_key):
             _clients[api_key] = client
         return client
 
-
-def _uses_thinking_level(model_name):
-    return model_name.startswith(("gemini-4-", "gemini-3.8-", "gemini-3.5-"))
-
-
 def _is_gemma(model_name):
     return model_name.startswith("gemma-")
+
+
+def _uses_thinking_level(model_name):
+    return model_name.startswith(("gemini-4-", "gemini-3.8-", "gemma-4-"))
 
 
 def _make_config(
@@ -346,19 +359,26 @@ def _make_config(
     thinking_level,
     json_mode,
     use_thinking,
+    timeout_ms=None,
 ):
     kw = dict(
         system_instruction=system_instruction,
         max_output_tokens=max_tokens,
     )
-    if not _uses_thinking_level(model_name) and temperature is not None:
+    # Gemini 4 and 3.8 ignore temperature; Gemma and older models accept it
+    if not model_name.startswith(("gemini-4-", "gemini-3.8-")) and temperature is not None:
         kw["temperature"] = temperature
 
     if json_mode:
         kw["response_mime_type"] = "application/json"
 
-    # Gemma 4 handles reasoning natively without Gemini ThinkingConfig parameters
-    if use_thinking and thinking_level and not _is_gemma(model_name):
+    if _is_gemma(model_name):
+        # Gemma 4 can only switch thinking on ("high") or off ("minimal")
+        on = use_thinking and str(thinking_level).lower() not in ("low", "minimal")
+        kw["thinking_config"] = types.ThinkingConfig(
+            thinking_level="high" if on else "minimal"
+        )
+    elif use_thinking and thinking_level:
         if _uses_thinking_level(model_name):
             kw["thinking_config"] = types.ThinkingConfig(thinking_level=thinking_level)
         else:
@@ -366,19 +386,46 @@ def _make_config(
             kw["thinking_config"] = types.ThinkingConfig(
                 thinking_budget=budget_map.get(str(thinking_level).lower(), 1024)
             )
+
+    if timeout_ms:
+        try:  # per-request timeout so one slow model cannot eat the whole budget
+            return types.GenerateContentConfig(
+                http_options=types.HttpOptions(timeout=int(timeout_ms)), **kw
+            )
+        except Exception:
+            pass
     return types.GenerateContentConfig(**kw)
+
+
+def _call_budget_ms(index, total, deadline):
+    """Time this model may use. Non-last models get 60% of what is left so a fallback
+    still has room. Returns 0 when there is no time left."""
+    if deadline is None:
+        return GEMINI_TIMEOUT_MS
+    remaining = deadline - time.perf_counter()
+    if remaining < 4:
+        return 0
+    share = remaining if index == total - 1 else remaining * 0.6
+    return int(min(remaining, max(4.0, share)) * 1000)
+
+
+def _is_timeout(err):
+    low = (err or "").lower()
+    return "timed out" in low or "timeout" in low or "deadline" in low
 
 
 def generate_text(
     contents,
     system_instruction,
     api_key,
-    models=FAST_MODELS,
+    models=None,
     temperature=0.7,
     max_tokens=1024,
     thinking_level=None,
     json_mode=False,
+    deadline=None,
 ):
+    models = models or FAST_MODELS
     if not api_key:
         return None, "no_key"
     try:
@@ -388,7 +435,11 @@ def generate_text(
         return None, "init"
 
     last_error = None
-    for model in models:
+    for i, model in enumerate(models):
+        timeout_ms = _call_budget_ms(i, len(models), deadline)
+        if not timeout_ms:
+            last_error = last_error or "timeout"
+            break
         use_thinking = bool(thinking_level)
         try:
             response = client.models.generate_content(
@@ -402,6 +453,7 @@ def generate_text(
                     thinking_level,
                     json_mode,
                     use_thinking,
+                    timeout_ms,
                 ),
             )
             text = getattr(response, "text", None)
@@ -412,8 +464,12 @@ def generate_text(
             last_error = str(e)
             print(f"[Gemini ERROR {model}]: {last_error[:300]}")
             low = last_error.lower()
-            if (use_thinking or json_mode) and (
-                "thinking" in low or "invalid_argument" in low or "json" in low
+            retry_ms = _call_budget_ms(i, len(models), deadline)
+            if (
+                retry_ms
+                and not _is_timeout(last_error)
+                and (use_thinking or json_mode)
+                and ("thinking" in low or "invalid_argument" in low)
             ):
                 try:
                     response = client.models.generate_content(
@@ -425,8 +481,9 @@ def generate_text(
                             temperature,
                             max_tokens,
                             None,
+                            False if _is_gemma(model) else json_mode,
                             False,
-                            False,
+                            retry_ms,
                         ),
                     )
                     text = getattr(response, "text", None)
@@ -441,12 +498,14 @@ def generate_text_stream(
     contents,
     system_instruction,
     api_key,
-    models=FAST_MODELS,
+    models=None,
     temperature=0.7,
     max_tokens=1024,
     thinking_level=None,
+    deadline=None,
 ):
     """Yields ('chunk', text) tuples as Gemini streams, or ('error', err_code) if all fail."""
+    models = models or FAST_MODELS
     if not api_key:
         yield ("error", "no_key")
         return
@@ -458,7 +517,11 @@ def generate_text_stream(
         return
 
     last_error = None
-    for model in models:
+    for i, model in enumerate(models):
+        timeout_ms = _call_budget_ms(i, len(models), deadline)
+        if not timeout_ms:
+            last_error = last_error or "timeout"
+            break
         use_thinking = bool(thinking_level)
         yielded_any = False
         try:
@@ -473,6 +536,7 @@ def generate_text_stream(
                     thinking_level,
                     False,
                     use_thinking,
+                    timeout_ms,
                 ),
             )
             for chunk in stream:
@@ -489,7 +553,13 @@ def generate_text_stream(
             if yielded_any:
                 return
             low = last_error.lower()
-            if use_thinking and ("thinking" in low or "invalid_argument" in low):
+            retry_ms = _call_budget_ms(i, len(models), deadline)
+            if (
+                retry_ms
+                and not _is_timeout(last_error)
+                and use_thinking
+                and ("thinking" in low or "invalid_argument" in low)
+            ):
                 try:
                     stream = client.models.generate_content_stream(
                         model=model,
@@ -502,6 +572,7 @@ def generate_text_stream(
                             None,
                             False,
                             False,
+                            retry_ms,
                         ),
                     )
                     for chunk in stream:
@@ -516,24 +587,16 @@ def generate_text_stream(
     yield ("error", last_error or "empty_response")
 
 
-def _pace_piece(piece, is_vercel=False):
-    """Yields smaller slices from large upstream chunks for smoother UI cadence."""
-    if is_vercel or len(piece) <= 18:
-        yield piece
-        return
-    step = 12
-    for i in range(0, len(piece), step):
-        yield piece[i : i + step]
-        time.sleep(0.01)
-
-
 def friendly_error(err):
     if err == "no_key":
         return "Nino isn't configured yet. Please add a Gemini key in Settings or try later."
     if err == "init":
         return "Nino couldn't start the AI service. Please try again later."
-    if err and "timeout" in err.lower():
-        return "Nino took too long generating that. Try fewer questions or try again in a moment."
+    if err and _is_timeout(err):
+        return (
+            "Nino's AI model took too long to answer (it may be busy). "
+            "Please try again, or ask for fewer questions."
+        )
     if err and ("429" in err or "quota" in err.lower()):
         return (
             "Nino is very busy right now (daily AI quota reached). "
@@ -848,6 +911,14 @@ _LATEX_CMD_RE = re.compile(r"\\[a-zA-Z]+")
 _MATH_BLOCK_RE = re.compile(r"\$([^\$]+)\$")
 _SYMBOL_RE = re.compile(r"(?<![a-zA-Z0-9_])([a-zA-Z])(?![a-zA-Z0-9_])")
 
+# Standard SI units, physical constants, chemical symbols, and dummy variables
+_IGNORED_SYMBOLS = {
+    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+    "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
+    "n", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+}
+# Keep strict checking on unusual variables only when truly absent; override above with focused whitelist:
 _IGNORED_SYMBOLS = {
     "A", "C", "D", "F", "G", "H", "I", "J", "K", "M", "N", "O", "P", "R", "S", "T", "V", "W",
     "c", "d", "e", "g", "h", "i", "k", "m", "n", "s", "t", "x", "y", "z",
@@ -952,60 +1023,74 @@ def clean_question(q, spec=None):
     }
 
 
-def generate_test_batch(specs, api_key):
-    """Generates a single batch of MCQs with bounded token and retry overhead."""
-    lines = "\n".join(
-        f"{i}. Subject: {s['subject']} | Topic: {s['topic']} | Required twist: {s['twist']}"
-        for i, s in enumerate(specs, 1)
-    )
-    prompt = (
-        f"Write exactly {len(specs)} questions, one for each line below, in this order.\n{lines}\n"
-        "Use the 'scratchpad' field to verify all physics/chemistry/math step-by-step and define "
-        "every symbol before finalizing 'question', 'solution', and 'options'.\n"
-        "Return only the JSON object."
-    )
-    contents = [types.Content(role="user", parts=[types.Part.from_text(text=prompt)])]
-    max_out = 2500 + 900 * len(specs)
+def generate_test_batch(specs, api_key, deadline=None):
+    """One Gemini call -> (list of valid questions, last_error). Retries once for missing ones."""
+    valid, err = [], None
+    for _attempt in range(2):
+        need = len(specs) - len(valid)
+        if need <= 0:
+            break
+        if deadline is not None and _attempt > 0 and deadline - time.perf_counter() < 12:
+            break  # no time for a second try
+        todo = specs[len(valid) :] if valid else specs
+        lines = "\n".join(
+            f"{i}. Subject: {s['subject']} | Topic: {s['topic']} | Required twist: {s['twist']}"
+            for i, s in enumerate(todo, 1)
+        )
+        prompt = (
+            f"Write exactly {len(todo)} questions, one for each line below, in this order.\n{lines}\n"
+            "Use the 'scratchpad' field to verify all physics/chemistry/math step-by-step and define "
+            "every symbol before finalizing 'question', 'solution', and 'options'.\n"
+            "Return only the JSON object."
+        )
+        contents = [types.Content(role="user", parts=[types.Part.from_text(text=prompt)])]
+        # Thinking tokens count inside max_output_tokens, so leave generous headroom
+        max_out = 8192 + 2000 * len(todo)
+        text, err = generate_text(
+            contents,
+            TEST_SYSTEM,
+            api_key,
+            models=REASONING_MODELS,
+            temperature=0.25,
+            max_tokens=max_out,
+            thinking_level=TEST_THINKING_LEVEL,
+            json_mode=True,
+            deadline=deadline,
+        )
+        data = parse_json_loose(text)
+        qs = (data or {}).get("questions") or (data or {}).get("Questions") or []
+        if isinstance(qs, list):
+            for idx, q in enumerate(qs):
+                spec = todo[idx] if idx < len(todo) else todo[-1]
+                cq = clean_question(q, spec=spec)
+                if cq:
+                    valid.append(cq)
+        valid = valid[: len(specs)]
+    return valid, err
 
-    text, err = generate_text(
-        contents,
-        TEST_SYSTEM,
-        api_key,
-        models=REASONING_MODELS,
-        temperature=0.25,
-        max_tokens=max_out,
-        thinking_level=TEST_THINKING_LEVEL,
-        json_mode=True,
-    )
-    data = parse_json_loose(text)
-    qs = (data or {}).get("questions") or (data or {}).get("Questions") or []
-    valid = []
-    if isinstance(qs, list):
-        for idx, q in enumerate(qs):
-            spec = specs[idx] if idx < len(specs) else specs[-1]
-            cq = clean_question(q, spec=spec)
-            if cq:
-                valid.append(cq)
-    return valid[: len(specs)], err
 
-
-def build_test(count, subject, hint, api_key):
-    """-> (title, questions, last_error). Batches run with bounded timeout."""
+def build_test(count, subject, hint, api_key, deadline=None):
+    """-> (title, questions, last_error). Batches run in parallel and share ONE deadline;
+    whatever finished in time is returned (partial test) instead of failing everything."""
     specs = build_specs(count, subject, hint)
-    batches = chunk_specs(specs, size=TEST_BATCH_SIZE)
-    futures = [_test_pool.submit(generate_test_batch, b, api_key) for b in batches]
+    batches = chunk_specs(specs)
+    if deadline is None:
+        deadline = time.perf_counter() + TOTAL_BUDGET_S
+    futures = [_test_pool.submit(generate_test_batch, b, api_key, deadline) for b in batches]
+    done, pending = wait(futures, timeout=max(1.0, deadline - time.perf_counter()))
+    for f in pending:
+        f.cancel()
     questions, err = [], None
-    batch_timeout = 26 if IS_VERCEL else 35
-
-    for f in futures:
-        try:
-            qs, e = f.result(timeout=batch_timeout)
-            questions.extend(qs)
-            err = err or e
-        except TimeoutError:
+    for f in futures:  # keep the original batch order
+        if f in done:
+            try:
+                qs, e = f.result()
+                questions.extend(qs)
+                err = err or e
+            except Exception as e:
+                err = err or str(e)
+        else:
             err = err or "timeout"
-        except Exception as e:
-            err = err or str(e)
 
     seen, unique = set(), []
     for q in questions:
@@ -1080,7 +1165,9 @@ def _sanitize_client_history(raw_hist):
     return cleaned
 
 
-def ask_ai_stream(prompt, message_history, api_key, file_bytes=None, mime_type=None, kind="chat"):
+def ask_ai_stream(
+    prompt, message_history, api_key, file_bytes=None, mime_type=None, kind="chat", deadline=None
+):
     formatted_contents = []
     for msg in message_history:
         role = "model" if msg["role"] in ("assistant", "model") else "user"
@@ -1094,16 +1181,13 @@ def ask_ai_stream(prompt, message_history, api_key, file_bytes=None, mime_type=N
     formatted_contents.append(types.Content(role="user", parts=current_parts))
 
     level, visible = THINKING[kind]
-    # Gemma 4 supports images + text; route PDFs directly to Gemini Flash-Lite
-    if mime_type == "application/pdf":
-        selected_models = FAST_MODELS
-    elif kind in ("doubt", "solution", "visual") or bool(file_bytes):
-        selected_models = REASONING_MODELS
-    else:
-        selected_models = FAST_MODELS
-
-    headroom = 1400 if level == "high" else 800 if level == "medium" else 400 if level == "low" else 0
-    token_cap = visible + headroom
+    selected_models = (
+        REASONING_MODELS
+        if (kind in ("doubt", "solution", "visual") or bool(file_bytes))
+        else FAST_MODELS
+    )
+    # Add thinking-token headroom when reasoning is enabled
+    token_cap = visible + (3000 if level == "high" else 1500 if level == "medium" else 0)
     return generate_text_stream(
         formatted_contents,
         SYSTEM_INSTRUCTIONS,
@@ -1112,8 +1196,8 @@ def ask_ai_stream(prompt, message_history, api_key, file_bytes=None, mime_type=N
         temperature=0.7 if kind == "chat" else 0.2,
         max_tokens=token_cap,
         thinking_level=level,
+        deadline=deadline,
     )
-
 
 # ==============================================================================
 # DISCORD LOGGING & FEEDBACK
@@ -1369,7 +1453,9 @@ def guide():
         # 1) Practice Test Path (standard validated JSON)
         if not file_bytes and is_test_request(user_prompt):
             count, subject, hint = parse_test_request(user_prompt)
-            title, questions, err = build_test(count, subject, hint, api_key)
+            title, questions, err = build_test(
+                count, subject, hint, api_key, deadline=t0 + TOTAL_BUDGET_S
+            )
             print(
                 f"[timing] test x{count} -> {len(questions)} ok in {(time.perf_counter() - t0) * 1000:.0f}ms"
             )
@@ -1384,9 +1470,14 @@ def guide():
                         "questions": [],
                     }
                 )
+            partial = (
+                f" The AI only finished {len(questions)} of {count} in time — ask again for more."
+                if len(questions) < count
+                else ""
+            )
             friendly = (
                 f"Here's your **{title}** set ({len(questions)} questions). "
-                "These are built to be tough — think before you tap."
+                "These are built to be tough — think before you tap." + partial
             )
             session_store.append_history(
                 name,
@@ -1432,6 +1523,7 @@ def guide():
                 file_bytes=file_bytes,
                 mime_type=mime_type,
                 kind=kind,
+                deadline=t0 + TOTAL_BUDGET_S,
             ):
                 if ev_type == "error":
                     had_error = payload
@@ -1455,7 +1547,8 @@ def guide():
 
         def event_stream():
             # Flush headers immediately so the edge starts streaming without buffering
-            yield ": connected\n\n"
+            # ~2KB of padding makes proxies that buffer small responses start flushing
+            yield ":" + " " * 2048 + "\n\n"
             parts = []
             had_error = None
             try:
@@ -1466,15 +1559,15 @@ def guide():
                     file_bytes=file_bytes,
                     mime_type=mime_type,
                     kind=kind,
+                    deadline=t0 + TOTAL_BUDGET_S,
                 ):
                     if ev_type == "error":
                         had_error = payload
                         break
                     parts.append(payload)
                     clean_piece = payload.replace("[PROGRESS_UP]", "")
-                    for sub in _pace_piece(clean_piece, is_vercel=IS_VERCEL):
-                        if sub:
-                            yield sse({"token": sub})
+                    if clean_piece:
+                        yield sse({"token": clean_piece})
             except GeneratorExit:
                 raise
             except Exception as e:
